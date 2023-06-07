@@ -146,32 +146,34 @@ Here are the pre-requisites to run these notebooks on Databricks:
 - Databricks Runtime Version should be of type **ML** and not Standard.
 - Databricks Runtime Version should be above `12.1 ML`
 - Your compute environment can be any number of nodes on any instance type.
-
+- You will need to create a personal user token
+- You will need to define $DBUSER to be your user on the databricks cluster
+- To begin please setup a personal access token on your databricks cluster by following these instructions [Access_Token Setup](https://docs.databricks.com/dev-tools/auth.html)
 The next few steps assume you have already installed and setup the [Databricks CLI](https://docs.databricks.com/dev-tools/cli/index.html) to point to your Databricks workspace.
 - Copy the private key file you obtained following the configuration file setup to your Databrick workspace filesystem using:
 
 ```
-$ databricks fs cp /path/to/private.key dbfs:/FileStore/shared_uploads/$USER/cmle/keypairs/private.key
+$ databricks fs cp /path/to/private.key dbfs:/FileStore/shared_uploads/$DBUSER/cmle/keypairs/private.key
 ```
-- Update the [configuration file](./conf/config.ini) to point the field `private_key_path` to the destination path, for example `private_key_path=/dbfs/FileStore/shared_uploads/$USER/cmle/keypairs/private.key`
+- Update the [configuration file](./conf/config.ini) to point the field `private_key_path` to the destination path, for example `private_key_path=/dbfs/FileStore/shared_uploads/$DBUSER/cmle/keypairs/private.key`
 - Copy the updated configuration file to your Databricks workspace filesystem using:
 
 ```
-$ databricks fs cp conf/config.ini dbfs:/FileStore/shared_uploads/$USER/cmle/conf/config.ini
+$ databricks fs cp conf/config.ini dbfs:/FileStore/shared_uploads/$DBUSER/cmle/conf/config.ini
 ```
 
 - Import the notebooks in your workspace. Please refer to the `Contents` section of this README to determine which notebooks should run on Databricks.
 For example to import the week 3 notebook you can do:
 
 ```
-$ databricks workspace mkdirs /Users/$USER/cmle
-$ databricks workspace import notebooks/assignments/Week3Notebook.ipynb /Users/$USER/cmle/Week3Notebook -l python -f jupyter
+$ databricks workspace mkdirs /Users/$DBUSER/cmle
+$ databricks workspace import notebooks/assignments/Week3Notebook.ipynb /Users/$DBUSER/cmle/Week3Notebook -l python -f jupyter
 ```
 
 - Create a compute environment following the pre-requisites mentioned above, and make sure to include in the `Environment variables` section the following:
 
 ```
-ADOBE_HOME=/dbfs/FileStore/shared_uploads/$USER/cmle
+ADOBE_HOME=/dbfs/FileStore/shared_uploads/$DBUSER/cmle
 ```
 
 ![Environment Variables](img/databricks-env.png)
