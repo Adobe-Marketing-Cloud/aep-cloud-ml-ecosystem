@@ -2,3 +2,7 @@ poetry.lock
 .DS_Store
 .idea/
 .ipynb_checkpoints/
+conf/applied_ml_config.ini
+conf/cmle_gov_config.ini
+conf/jeremy-test.json
+.python-version
