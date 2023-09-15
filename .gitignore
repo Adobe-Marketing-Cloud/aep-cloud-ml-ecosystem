@@ -5,4 +5,6 @@ poetry.lock
 conf/applied_ml_config.ini
 conf/cmle_gov_config.ini
 conf/jeremy-test.json
+conf/aemassets-config.ini
+conf/dr_config.txt
 .python-version
