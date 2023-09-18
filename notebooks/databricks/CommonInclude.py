@@ -233,6 +233,22 @@ print(f"database_name: {database_name}")
 
 # COMMAND ----------
 
+import mlflow
+
+# We'll be using Unity Catalog as our Model Registry
+mlflow.set_registry_uri("databricks-uc")
+
+# Let's set up our experiment and registered model name.
+experiment_name = f"/Users/{current_user}/aep-byoml/main-experiment"
+base_model_name = "cmle_propensity"
+model_name = f"{catalog_name}.{database_name}.{base_model_name}"
+mlflow.set_experiment(experiment_name)
+
+print(f"experiment_name: {experiment_name}")
+print(f"model_name: {model_name}")
+
+# COMMAND ----------
+
 # MAGIC %config InlineBackend.figure_format='retina'
 
 # COMMAND ----------

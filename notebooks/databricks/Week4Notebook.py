@@ -27,10 +27,6 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install aepp mmh3 rstr pygresql adlfs
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC This notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
 # MAGIC
@@ -97,13 +93,13 @@ connector = connector.AdobeRequest(
     logger=None,
 )
 
-endpoint = (
+landing_zone_endpoint = (
     aepp.config.endpoints["global"]
     + "/data/foundation/connectors/landingzone/credentials"
 )
 
 dlz_credentials = connector.getData(
-    endpoint=endpoint, params={"type": "dlz_destination"}
+    endpoint=landing_zone_endpoint, params={"type": "dlz_destination"}
 )
 dlz_container = dlz_credentials["containerName"]
 dlz_sas_token = dlz_credentials["SASToken"]
@@ -120,9 +116,9 @@ dlz_sas_uri = dlz_credentials["SASUri"]
 from adlfs import AzureBlobFileSystem
 from fsspec import AbstractFileSystem
 
-fs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
+azure_blob_fs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
 
-export_time = get_export_time(fs, dlz_container, export_path, featurized_dataset_id)
+export_time = get_export_time(azure_blob_fs, dlz_container, export_path, featurized_dataset_id)
 print(f"Using featurized data export time of {export_time}")
 
 # COMMAND ----------
@@ -144,8 +140,8 @@ spark.conf.set(f"fs.azure.sas.fixed.token.{dlz_storage_account}.dfs.core.windows
 protocol = "abfss"
 input_path = f"{protocol}://{dlz_container}@{dlz_storage_account}.dfs.core.windows.net/{export_path}/{featurized_dataset_id}/exportTime={export_time}/"
 
-df = spark.read.parquet(input_path)
-df.printSchema()
+dlz_input_df = spark.read.parquet(input_path).na.fill(0)
+dlz_input_df.printSchema()
 
 # COMMAND ----------
 
@@ -154,7 +150,7 @@ df.printSchema()
 
 # COMMAND ----------
 
-df.count()
+dlz_input_df.count()
 
 # COMMAND ----------
 
@@ -163,8 +159,36 @@ df.count()
 
 # COMMAND ----------
 
-df = df.fillna(0)
-display(df)
+display(dlz_input_df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC Since we already created the Feature Store table previously, here we just need to
+# MAGIC update and that we need to now with our new data to prepare it for scoring. 
+# MAGIC To do that, we'll now use the fresh data from the DLZ to write to the feature 
+# MAGIC store so that we merge in any inserts and updates as a single Delta transaction.
+
+# COMMAND ----------
+
+from databricks import feature_store
+from databricks.feature_store import feature_table, FeatureLookup
+
+# We need an instance of the feature store client to use the API.
+fs = feature_store.FeatureStoreClient()
+feature_table_name = "user_propensity_features"
+
+# Merge the new data into the feature table
+fs.write_table(name=feature_table_name, df=dlz_input_df)
+
+# Compose and display a link to the feature table.
+feature_table_link = f"/explore/data/{catalog_name}/{database_name}/{feature_table_name}"
+display_link(feature_table_link, "User Propensity Features in Unity Catalog")
+
+# Finally, let's look at a dataframe read in from the feature table.
+feature_df = fs.read_table(feature_table_name)
+display(feature_df)
 
 # COMMAND ----------
 
@@ -175,40 +199,38 @@ display(df)
 
 # MAGIC %md
 # MAGIC For scoring we need 2 things:
-# MAGIC 1. The **data** to score.
-# MAGIC 2. The **trained model** that will be used to do the scoring.
+# MAGIC 1. The batch of **data** to score (primary keys, along with any features not in the feature table).
+# MAGIC 2. The URI of the **trained model** that will be used to do the scoring.
 # MAGIC
-# MAGIC We just created a dataframe containing the first one, and in the previous weekly assignment we created a production model that can operate on this data, so let's fetch this model from our model hub and turn it into a Spark UDF so it can interact with our data easily:
-
-# COMMAND ----------
-
-import mlflow.pyfunc
-
-model_udf = mlflow.pyfunc.spark_udf(spark, f"models:/{model_name}/production")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Now we're ready to apply our trained model on top of the entire dataset. For that, we need to give this UDF its inputs - which in our case are all the columns that the model needs to operate on. We can get that easily as the Spark dataframe contains metadata about its columns:
-
-# COMMAND ----------
-
-from pyspark.sql.functions import struct
-
-# Apply the model to the new data
-udf_inputs = struct(*(df.columns))
-
-df_scored = df.withColumn("prediction", model_udf(udf_inputs)[0])
-df_scored.printSchema()
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC We just created a dataframe containing the first one, and in the previous weekly assignment we created a production model that can operate on this data. Since we used the Feature Store API to log the model, Databricks will automatically take care of looking up the features appropriate for the model. Furthermore, if we decide to shift our feature table to looking at user features over time, it'll even take care of automatically performing the point in time lookup against the feature table.
+# MAGIC
 # MAGIC If we look at the data we should see a new column called `prediction` which corresponds to the score generated by the model for this particular profile based on all the features computed earlier.
+# MAGIC
+# MAGIC Note that the `score_batch` function is also handling setting up a Spark UDF for us as well, so the inference is happening across the cluster as it looks up the features from the feature table and applies our model using a vectorized UDF.
 
 # COMMAND ----------
 
-display(df_scored)
+import mlflow
+import mlflow.pyfunc
+from datetime import datetime
+
+client = mlflow.MlflowClient()
+
+current_timestamp = datetime.now()
+model_uri = f"models:/{model_name}@Champion"
+model_version = client.get_model_version_by_alias(model_name, "Champion")
+
+batch_df = dlz_input_df.select("userId")
+scored_df = (
+    fs.score_batch(model_uri, batch_df, result_type="array<double>")
+    .withColumn("prediction", F.col("prediction")[1])
+    .withColumn("model_version", F.lit(model_version.version))
+    .withColumn("timestamp", F.lit(current_timestamp)))
+
+scored_table_name = "propensity_model_output"
+scored_df.write.mode("overwrite").saveAsTable(scored_table_name)
+scored_df = spark.table(scored_table_name)
+display(scored_df)
 
 # COMMAND ----------
 
@@ -219,19 +241,10 @@ display(df_scored)
 
 # COMMAND ----------
 
-from pyspark.sql.functions import (
-    udf,
-    col,
-    lit,
-    create_map,
-    array,
-    struct,
-    current_timestamp,
-)
-
+from pyspark.sql.functions import (udf, col, lit, create_map, array, struct, current_timestamp)
 from itertools import chain
 
-df_to_ingest = df_scored.select("userId", "prediction").cache()
+df_to_ingest = scored_df.select("userId", "prediction").cache()
 df_to_ingest.printSchema()
 
 # COMMAND ----------

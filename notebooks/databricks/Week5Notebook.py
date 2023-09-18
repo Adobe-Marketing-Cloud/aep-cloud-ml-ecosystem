@@ -26,10 +26,6 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install aepp mmh3 rstr pygresql adlfs
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC This notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
 # MAGIC
@@ -98,8 +94,8 @@ print(dlz_container)
 from adlfs import AzureBlobFileSystem
 from fsspec import AbstractFileSystem
 
-fs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
-export_time = get_export_time(fs, dlz_container, import_path, scoring_dataset_id)
+azure_blob_fs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
+export_time = get_export_time(azure_blob_fs, dlz_container, import_path, scoring_dataset_id)
 print(f"Using featurized data export time of {export_time}")
 
 # COMMAND ----------
@@ -384,7 +380,8 @@ segment_spec = {
 segment_res = get_or_create_segment(segment_conn, segment_spec)
 
 segment_id = segment_res["id"]
-segment_id
+segment_link = get_ui_link(tenant_id, "segment/browse", urllib.parse.quote(segment_id, safe="a"))
+display_link(segment_link, segment_spec["name"])
 
 # COMMAND ----------
 

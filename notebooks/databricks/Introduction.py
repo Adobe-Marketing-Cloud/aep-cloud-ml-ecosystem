@@ -67,18 +67,28 @@
 # MAGIC
 # MAGIC ### [Week 5: Use model results to create an audience segment]($./Week5Notebook)
 # MAGIC
+# MAGIC Once the model is created and we've scored a batch of data we have a propensity score
+# MAGIC for all our contacts. From there, we can determine a set of thresholds to use to define
+# MAGIC and audience to target with our advertising campaigns.
+# MAGIC
+# MAGIC ### [Week 6: Set up monitoring]($./Week6Notebook)
+# MAGIC
+# MAGIC Now that our model is working and our pipeline is adjusting our defined audience segment
+# MAGIC we need to monitor its performance over time. This notebook shows how you can do that
+# MAGIC with the new gated public preview of Databricks Lakehouse Monitoring.
+# MAGIC
 # MAGIC ## Additional Files 
 # MAGIC
 # MAGIC In addition to the [Run Me]($./RunMe) notebook, there are a couple of notebooks 
 # MAGIC with additional code referenced in the weekly notebooks.
 # MAGIC
-# MAGIC ### [CommonInclude]($./CommonInclude)
+# MAGIC ### [Common Include]($./CommonInclude)
 # MAGIC
 # MAGIC This contains some notebook setup code and common functions used across multiple notebooks.
 # MAGIC You can check this out to learn how particular helper functions are implemented and for 
 # MAGIC details about environment configuration.
 # MAGIC
-# MAGIC ### [SimulationHelpers]($./SimulationHelpers)
+# MAGIC ### [Simulation Helpers]($./SimulationHelpers)
 # MAGIC
 # MAGIC This course includes logic to simulate user experience events and this notebook contains
 # MAGIC all the functions which implements that logic. Check this out for details on how the 

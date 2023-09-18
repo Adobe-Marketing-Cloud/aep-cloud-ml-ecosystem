@@ -21,10 +21,6 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install aepp mmh3 rstr pygresql adlfs
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC This notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
 # MAGIC
@@ -70,11 +66,11 @@ connector = connector.AdobeRequest(
     loggingEnabled=False,
     logger=None)
 
-endpoint = (
+dlz_endpoint = (
     aepp.config.endpoints["global"]
     + "/data/foundation/connectors/landingzone/credentials")
 
-dlz_credentials = connector.getData(endpoint=endpoint, params={"type": "dlz_destination"})
+dlz_credentials = connector.getData(endpoint=dlz_endpoint, params={"type": "dlz_destination"})
 dlz_container = dlz_credentials["containerName"]
 dlz_sas_token = dlz_credentials["SASToken"]
 dlz_storage_account = dlz_credentials["storageAccountName"]
@@ -90,8 +86,8 @@ dlz_sas_uri = dlz_credentials["SASUri"]
 from adlfs import AzureBlobFileSystem
 from fsspec import AbstractFileSystem
 
-fs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
-export_time = get_export_time(fs, dlz_container, export_path, featurized_dataset_id)
+abfs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
+export_time = get_export_time(abfs, dlz_container, export_path, featurized_dataset_id)
 print(f"Using featurized data export time of {export_time}")
 
 # COMMAND ----------
@@ -173,7 +169,13 @@ display(sample_df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Before doing any ML we can look at summary statistics to understand the structure of the data, and what kind of algorithm(s) might be suited to solve the problem.
+# MAGIC Before doing any ML we can look at summary statistics to understand the structure of the data, and what kind of algorithm(s) might be suited to solve the problem. [Databricks profiling](https://www.databricks.com/blog/2021/12/07/introducing-data-profiles-in-the-databricks-notebook.html) tools are well suited to this task. One way to access the profiling tools is via the visualization dropdown any time you display a dataframe, as shown in the screenshot below.
+# MAGIC
+# MAGIC ![databricks-profiling](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week3-DatabricksProfiler.png)
+# MAGIC
+# MAGIC Another way is to call it directly in a notebook cell as shown below via `dbutils.data.summarize`. 
+# MAGIC That's the approach we'll take in the following cell. Further information about this command
+# MAGIC can be found in [the documentation](https://docs.databricks.com/en/dev-tools/databricks-utils.html#summarize-command-dbutilsdatasummarize).
 
 # COMMAND ----------
 
@@ -182,13 +184,14 @@ dbutils.data.summarize(sample_df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC To keep the model name unique we append the username to the model name:
+# MAGIC By default, the MLflow Python client creates models in the Databricks workspace model registry. However, to take better advantage of the Lakehouse AI platform's ability to provide end-to-end lineage and governance of our both our data and AI assets, we'll be storing our [model in Unity Catalog](https://docs.databricks.com/en/mlflow/models-in-uc.html). This means we'll be using the three level namespace of _catalog\_name.schema\_name.model\_name_. The model name for this example was already created for us based on the catalog and schema we're already using, but let's print it out here so you'll know what to go look for.
+# MAGIC
+# MAGIC Note that the common include setup has also already taken care of specifying that we 
+# MAGIC want to use model registry by setting our registry uri with `mlflow.set_registry_uri("databricks-uc")`.
 
 # COMMAND ----------
 
-model_prefix = "cmle_propensity_model"
-model_name = f"{model_prefix}_{unique_id}"
-displayHTML(f"""The model will be registered as <b style="color: green;">{model_name}</b>.""")
+displayHTML(f"""The model will be registered as <b>{model_name}</b>.""")
 
 # COMMAND ----------
 
@@ -196,6 +199,8 @@ displayHTML(f"""The model will be registered as <b style="color: green;">{model_
 # MAGIC To use data from the feature store in our model, we create a training set using the feature store client, passing a set of the feature lookups we want to use for that training set. This metadata will be hermetically sealed with the rest of the model metadata when we log the model. This enables the feature store to track lineage of the feature and models, and also helps streamline downstream scoring of the model. 
 # MAGIC
 # MAGIC At scoring time, all we need to pass is the keys for the batch we want to score, and feature store will automatically join in all the features needed to run inference. This is helpful because it enables data scientists to publish new models that require new features without requiring changes to downstream inference code, as well as helping to avoid skew between training and serving, since we know for sure they'll be using the same feature generation logic.
+# MAGIC
+# MAGIC Note that our Feature Store table will also be stored in Unity Catalog.
 
 # COMMAND ----------
 
@@ -252,7 +257,7 @@ ids_train, ids_test, X_train, X_test, y_train, y_test = train_test_split(
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC The predict method of sklearn's RandomForestClassifier returns a binary classification (0 or 1). Whereas before we needed to create a PythonModel wrapper in order to call `predict_proba`, we can now simply pass it as an argument called `pyfunc_predict_fn` when [logging](https://mlflow.org/docs/latest/python_api/mlflow.sklearn.html#mlflow.sklearn.log_model) the model. However, using the wrapper class is still useful if there is additional pre-processing or post-processing that needs to be applied beyond that.
+# MAGIC The predict method of sklearn's RandomForestClassifier returns a binary classification (0 or 1). Whereas before we needed to create a PythonModel wrapper in order to call `predict_proba`, we can now simply pass it as an argument called `pyfunc_predict_fn` when [logging](https://mlflow.org/docs/latest/python_api/mlflow.sklearn.html#mlflow.sklearn.log_model) the model.
 # MAGIC
 # MAGIC For reference, here's what a wrapper would have looked like if we weren't using the new `pyfunc_predict_fn` parameter:
 # MAGIC
@@ -265,6 +270,8 @@ ids_train, ids_test, X_train, X_test, y_train, y_test = train_test_split(
 # MAGIC
 # MAGIC         def predict(self, context, model_input):
 # MAGIC             return self.model.predict_proba(model_input)[:, 1]
+# MAGIC
+# MAGIC  Using [custom pyfunc models](https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#pyfunc-create-custom) is still useful if there is additional pre-processing or post-processing that needs to be applied beyond that, or for any other custom processing, but this case was common enough that the MLflow added `pyfunc_predict_fn` as a special keyword argument for _scikit-learn_ models to help remove some of the boilerplate required.
 
 # COMMAND ----------
 
@@ -339,15 +346,16 @@ with mlflow.start_run(run_name=run_name_untuned) as untuned_run:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1.2 Registering models in the Model Registry with MLflow
+# MAGIC ## 1.2 Registering models in Unity Catalog with MLflow
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now that we have a baseline model, we can register it in the Model Registry so we can easily 
+# MAGIC Now that we have a baseline model, we can register it in Unity Catalog so we can easily 
 # MAGIC fetch them again later to compare with future iterations of the models once we do more tuning. 
-# MAGIC By registering this model in Model Registry, you can easily reference the model from anywhere 
-# MAGIC within Databricks.
+# MAGIC By registering this model in Unity Catalog, you can share the model securely from anywhere 
+# MAGIC within Databricks, across all your workspaces attached to this Unity Catalog metastore 
+# MAGIC (i.e., in this region).
 # MAGIC
 # MAGIC Let's start with the Random Forest model. We need the `run_id`, which we can get from the 
 # MAGIC `untuned_run` object we captured when we started the run above. Additionally, we also need 
@@ -433,6 +441,8 @@ models = {"random_forest": RandomForestClassifier}
 # MAGIC All that's left is to define the objective function that will be distributed in the cluster. `hyperopt` will be passing a sample which contains all the hyper-parameters chosen for a given trial (including the choice of algorithm), and we translate from that sample to an initialized model. Because in the search space we used keys matching the parameters for these algorithms, we can directly unpack the dictionary to get a model initialized with the requested hyper-parameters.
 # MAGIC
 # MAGIC Depending on your `max_evals` value earlier and the size of your Databricks cluster this could take some time.
+# MAGIC
+# MAGIC Now that we've identified the best set of hyperparameters using our validation split, let's do one final training run using our full training set and get a final set of offline evaluation metrics using our hold-out test set. We'll then log this one as our best model training run. 
 
 # COMMAND ----------
 
@@ -458,7 +468,8 @@ def objective_fn(sample):
 
 
 spark_trials = SparkTrials(parallelism=parallelism)
-with mlflow.start_run(run_name=f"{model_name}_hyperopt_tuning"):
+
+with mlflow.start_run(run_name=f"{model_name}_hyperopt_tuning") as hero_run:
     best_params = fmin(
         fn=objective_fn,
         space=search_space,
@@ -467,8 +478,8 @@ with mlflow.start_run(run_name=f"{model_name}_hyperopt_tuning"):
         trials=spark_trials)
 
     print(best_params)
-
     eval_params = space_eval(search_space, best_params)
+    print(eval_params)
     params = eval_params["model_choice"]["kwargs"]
     model = RandomForestClassifier(**params)
     model.fit(X_train, y_train)
@@ -477,6 +488,7 @@ with mlflow.start_run(run_name=f"{model_name}_hyperopt_tuning"):
     auc_score = roc_auc_score(y_test, predictions_test)
     mlflow.log_metric("auc", auc_score)
 
+    # Log the model using the feature store API
     fs.log_model(
         model=model,
         artifact_path="best_model",
@@ -489,22 +501,14 @@ with mlflow.start_run(run_name=f"{model_name}_hyperopt_tuning"):
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now that we've identified the best set of hyperparameters using our validation split, let's do one final training run using our full training set and get a final set of offline evaluation metrics using our hold-out test set. We'll then log this one as our best model training run. 
-
-# COMMAND ----------
-
-with mlflow.start_run(run_name=f"{model_name}_best_run") as best_run:
-
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC After the computations have completed, you'll have access to a lot of information:
 # MAGIC - What is your best-performing model, what are its hyper-parameters, and what is its AUC.
 # MAGIC - How do the various hyper-parameters interact with each other.
 # MAGIC - Is there any of the models that performs better on aggregate.
 # MAGIC
 # MAGIC A lot of this information can be found in MLFlow by going into the Databricks **Experiments**, selecting the experiment group (typically the name of this notebook), and then expanding the experiment container that we started with `hyperopt` and selecting the individual trials here. After clicking on `Compare` you will see a few visualizations to understand the results of the tuning better.
+# MAGIC
+# MAGIC ![mlflow-model-comparison](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week3-MLflowModelComparison.png)
 # MAGIC
 # MAGIC To complete our understanding of the tuning, we'll do a scatter plot to represent the AUC (or loss) for each of the trials. This can help identify whether there are some outliers, and if there is a general trend emerging that could be caught by visual inspection. We use `plotly` to draw the graph, and also add additional hover data to each scatter point representing the hyper-parameters used for that trial.
 
@@ -554,7 +558,7 @@ fig.show()
 
 # COMMAND ----------
 
-best_run_filter = f'tags.mlflow.runName = "{model_name}_best_run"'
+best_run_filter = f'tags.mlflow.runName = "{model_name}_hyperopt_tuning"'
 best_run_global = mlflow.search_runs(
     filter_string=best_run_filter, 
     order_by=['metrics.auc DESC']).iloc[0]
@@ -565,34 +569,47 @@ print(f"Best global AUC: {best_auc_global}")
 
 top_model_name = model_name
 top_model_version = mlflow.register_model(f"runs:/{best_run_id_global}/best_model", top_model_name)
-time.sleep(15)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Because this model is our top model after tuning, we are ready to promote it to production. Promoting it will help refer to it when calling MLflow, and also will show its status as **Production** in the Model Registry UI.
+# MAGIC Previously, in the Workspace MLflow Model Registry, we had a concept of stages of a registered model 
+# MAGIC as a means of marking a particular version as either _Production_ or _Staging_. Recent versions of 
+# MAGIC MLflow, and in particular the Unity Catalog implementation of the Model Registry, we instead use a
+# MAGIC concept of [model aliases](https://mlflow.org/docs/latest/model-registry.html#using-registered-model-aliases)
+# MAGIC to mark a model version. You can create your own alias names and you can use
+# MAGIC more than the two names that were used for stages previously. Common choices include _Champion_ and
+# MAGIC _Challenger_ to mark one model as _the current best one we know of so far used for most traffic_ and
+# MAGIC the other as _one that might be better than the champion but we need to test it to find out_. 
+# MAGIC
+# MAGIC Because this model is our top model after tuning, we are ready to promote it to become the _Champion_. 
+# MAGIC Promoting it will help refer to it when calling MLflow, and also will show it as having the _Champion_ 
+# MAGIC alias in Unity Catalog.
 
 # COMMAND ----------
 
 from mlflow.tracking import MlflowClient
 
 client = MlflowClient()
-client.transition_model_version_stage(
-    name=top_model_name,
-    version=top_model_version.version,
-    stage="Production",
-)
+
+client.set_registered_model_alias(
+    name=top_model_name, 
+    alias="Champion", 
+    version=top_model_version.version)
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC The Models page now shows the model version in stage **Production**
 # MAGIC
-# MAGIC You can now refer to the model using the path **models:/$MODELNAME/production**
+# MAGIC ![mlflow-model-comparison](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week3-ModelAliasApplied.png)
+# MAGIC
+# MAGIC You can now refer to the model using the path **models:/${catalog}.{schema}.{model}@Champion**
 
 # COMMAND ----------
 
-prod_model_uri = f"models:/{top_model_name}/production"
+prod_model_uri = f"models:/{top_model_name}@Champion"
+
 test_df = spark.createDataFrame(
     pd.DataFrame({
         "userId": ids_test,
@@ -639,19 +656,31 @@ full_y_true = full_pred_pandas_df[label_name]
 # COMMAND ----------
 
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+import matplotlib.pyplot as plt
 
 matrix = confusion_matrix(full_y_pred, full_y_true)
-fig = ConfusionMatrixDisplay(matrix, display_labels=["notSubscribed", "subscribed"])
-fig.plot();
+fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+cm_display = ConfusionMatrixDisplay(matrix, display_labels=["notSubscribed", "subscribed"])
+cm_display.plot(ax=ax);
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC This confusion matrix makes for useful documentation. Let's store it as an
+# MAGIC artifact alongside our model in this run in our experiment. Note that we could
+# MAGIC also store additional plots both at the parent run level or against any of the
+# MAGIC child runs we were performing during our hyperparameter sweep above.
+
+# COMMAND ----------
+
+with mlflow.start_run(run_id=best_run_id_global) as hero_run:
+    mlflow.log_figure(fig, "confusion_matrix.png")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 1.4 Saving the final model name to configuration
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC
 # MAGIC Now that we got everything working, we just need to save the updated `model_name` variable in the original configuration file, so we can refer to it in the following weekly assignments. To do that, execute the code below:
 
 # COMMAND ----------
