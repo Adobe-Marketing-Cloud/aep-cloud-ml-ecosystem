@@ -190,6 +190,6 @@ A custom notebook has been built that shows Sagemaker support.  The central idea
 
 #### 4.1 Sagemaker studio environment requirements
 - A custom jars subdirectory with the image below delineating the jars needed to be installed
-![Screenshot 2023-09-19 at 8.08.44 AM.png](..%2F..%2F..%2FDesktop%2FScreenshot%202023-09-19%20at%208.08.44%20AM.png)
+![jarsNeeded.png](img/jars-needed.png)
 - A conf directory with a config.ini with the appropriate parameters for all of the authentication and the featurized dataset id
 - The file private.key needs to be uploaded to the root directory of the sagemaker studio environment
