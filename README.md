@@ -10,7 +10,7 @@ The git repo currently contains five notebooks showcasing the full lifecycle of 
 Notebook Link | Environment | Summary | Scope
 ------------- |-------|---------| -----
 [Week1Notebook.ipynb](notebooks/assignments/Week1Notebook.ipynb) | Local | Data Exploration | Create synthetic data and perform exploratory data analysis.
-[Week2Notebook.ipynb](notebooks/assignments/aws_sagemaker/Week2Notebook_sagemaker.ipynb) | Local | Featurization | Generate a training set and export to cloud storage.
+[Week2Notebook.ipynb](notebooks/assignments/Week2Notebook.ipynb) | Local | Featurization | Generate a training set and export to cloud storage.
 [Week3Notebook.ipynb](notebooks/assignments/Week3Notebook.ipynb) | Cloud Platform | Training | Plugging in features into a machine learning model.
 [Week4Notebook.ipynb](notebooks/assignments/Week4Notebook.ipynb) | Cloud Platform | Scoring | Generating propensity scores for all profiles and importing back to the Experience Platform.
 [Week5Notebook.ipynb](notebooks/assignments/Week5Notebook.ipynb) | Cloud Platform | Targeting | Target profiles based on propensity interval.
@@ -30,7 +30,7 @@ Config Property | Section | Description                                         
 ims_org_id | Platform | The organization ID                                        | See section below on **Org-level Information** | Weeks 1 through 5
 sandbox_name | Platform | The ID of the sandbox to use                               | See section below on **Org-level Information** | Weeks 1 through 5
 dataset_id | Platform | The ID of the dataset containing the synthetic data        | Dataset ID created as part of [Week1Notebook.ipynb](notebooks/assignments/Week1Notebook.ipynb) | Week 2
-featurized_dataset_id | Platform | The ID of the dataset containing the featurized data       | Dataset ID created as part of [Week2Notebook.ipynb](notebooks/assignments/aws_sagemaker/Week2Notebook_sagemaker.ipynb) | Weeks 3 & 4
+featurized_dataset_id | Platform | The ID of the dataset containing the featurized data       | Dataset ID created as part of [Week2Notebook.ipynb](notebooks/assignments/Week2Notebook.ipynb) | Weeks 3 & 4
 scoring_dataset_id | Platform | The ID of the dataset containing the scoring output        | Dataset ID created as part of [Week4Notebook.ipynb](notebooks/assignments/Week4Notebook.ipynb) | Week 5
 environment | Platform | The type of environment this organization is running under | **prod** if running in production, **stage** otherwise | Weeks 1 through 5
 client_id | Authentication | The client ID used for API calls                           | See section below on **Authentication Information** | Weeks 1 through 5
