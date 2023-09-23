@@ -1,189 +1,220 @@
-# Cloud ML Ecosystem (CMLE)
+# Adobe Experience Platform - Cloud ML Ecosystem (CMLE)
 
-This repository documents the various steps and pipelines needed to run Machine Learning (ML) models leveraging Adobe Experience Platform data. There are 2 parts to this repository:
-- Notebooks to illustrate the end-to-end workflow on a variety of cloud ML platforms.
-- Pipeline and library code that can be extended from to add your own ML model and data.
+This repository provides sample notebooks that demonstrate an end-to-end workflow for using customer data from the Adobe Experience Platform (AEP) with cloud-based machine learning tools. The notebooks serve as a template to help data science teams take advantage of their organization's AEP data and services within their modeling workflow to develop custom models to support their organization's marketing and experience activities.
 
-## Contents
-The git repo currently contains five notebooks showcasing the full lifecycle of an ML application leveraging the Adobe Experience Platform.
+README contents:
+- [Intended use](#intended-use)
+- [Overview of CMLE notebooks](#overview-of-cmle-notebooks)
+	- [Generate synthetic data](#generate-synthetic-data)
+	- [EDA and Featurization with Query Service](#eda-and-featurization-with-query-service)
+	- [Export training data](#export-training-data)
+	- [Train a propensity model](#train-a-propensity-model)
+	- [Score the propensity model](#score-the-propensity-model)
+	- [Ingest scores to AEP](#ingest-scores-to-aep)
+	- [Create and activate audiences from code](#create-and-activate-audiences-from-code)
+- [Getting started with the CMLE notebooks](#getting-started-with-the-cmle-notebooks)
+- [Troubleshooting](#troubleshooting)
+- [Helpful resources](#helpful-resources)
 
-Notebook Link | Environment | Summary | Scope
-------------- |-------|---------| -----
-[Week1Notebook.ipynb](notebooks/assignments/Week1Notebook.ipynb) | Local | Data Exploration | Create synthetic data and perform exploratory data analysis.
-[Week2Notebook.ipynb](notebooks/assignments/Week2Notebook.ipynb) | Local | Featurization | Generate a training set and export to cloud storage.
-[Week3Notebook.ipynb](notebooks/assignments/Week3Notebook.ipynb) | Cloud Platform | Training | Plugging in features into a machine learning model.
-[Week4Notebook.ipynb](notebooks/assignments/Week4Notebook.ipynb) | Cloud Platform | Scoring | Generating propensity scores for all profiles and importing back to the Experience Platform.
-[Week5Notebook.ipynb](notebooks/assignments/Week5Notebook.ipynb) | Cloud Platform | Targeting | Target profiles based on propensity interval.
+## Intended use
 
-Before you can use any of the code in this repository, there is some setup required.
-Please refer to the `Environment` part of the table above to determine the setup needed to run that notebook as described in the next section.
+The sample notebooks in this repository provide a stylized example of training and scoring a propensity model to predict subscription conversions from AEP data. The first notebook will generate synthetic datasets in an AEP sandbox that will be used in subsequent notebooks to illustrate an end-to-end flow that includes:
+- Exploring and featurizing data from AEP
+- Making the prepared training data available in your machine learning environment (we use Databricks ML as an example, but you can modify the sample notebooks to use your own ML environment)
+- Training and scoring the propensity model
+- Enriching AEP profiles with the computed propensity scores, and using those scores to create and activate an audience
 
-**Note**: If the `Environment` says `Cloud Platform` you can use your Cloud Platform of choice to run this notebook and refer to the appropriate section of the setup below.
+The sample notebooks are intended to be used in one of two ways:
+1. As a tutorial for using AEP data in ML workflows
+	- Ideally, use a dedicated AEP sandbox for completing the tutorial, to avoid mixing synthetic data with real customer data. You can reset or delete the sandbox after completing the tutorial to free it up for other use.
+	- Clone or download this repository to create a copy in your ML environment.
+	- Follow the instructions in [Getting started with the CMLE notebooks](#getting-started-with-the-cmle-notebooks) to get an AEP API credential with the required permissions and update the [config.ini](../conf/config.ini) file with the required values.
+	- Review and execute the cells in each notebook, in order to demonstrate and validate the workflow in your environment
+	- Modify the code in the notebooks as needed to adapt to your environment
+2. As a template for AEP-related ML projects for your organization
+	- Fork the CMLE repository as a starting template for a new ML project
+	- Alternatively, simply reference the code in these notebooks as helpful examples to start a new project from scratch
 
-## Configuration File
+> **:warning: Warning**  
+> The workflow illustrated in these notebooks involves exporting datasets from AEP to a cloud storage destination, where it can be read and processed using external machine learnig tools. As such, there is some risk of sensitive personal data leaving the Experience Platform and being used inappropriately outside of the Platform.  
+>   
+> Experience Platform provides data governance tools for you to manage your data usage obligations and help minimize this risk. You are responsible ensuring that data in the Experience Platform is properly labeled before querying or exporting that data. This includes manually re-applying labels to derived datasets created from query output.  Derived datasets from queries do not support the processing of sensitive personal data. You are responsible for understanding the limitations and obligations of your data and how you use that data in Experience Platform and the destination platform, which may have its own rules and obligations for incoming and outgoing data.  Learn more about [data governance tools](https://experienceleague.adobe.com/docs/experience-platform/data-governance/home.html?lang=en) in Experience Platform.
 
-There is a common [configuration file](./conf/config.ini) used by all the notebooks.
-For the setup you can refer to the following section, but here are the different configuration options you should use:
+## Overview of CMLE notebooks
 
-Config Property | Section | Description                                                | Value | Needed for
-----------------|---------|------------------------------------------------------------|-------|------------
-ims_org_id | Platform | The organization ID                                        | See section below on **Org-level Information** | Weeks 1 through 5
-sandbox_name | Platform | The ID of the sandbox to use                               | See section below on **Org-level Information** | Weeks 1 through 5
-dataset_id | Platform | The ID of the dataset containing the synthetic data        | Dataset ID created as part of [Week1Notebook.ipynb](notebooks/assignments/Week1Notebook.ipynb) | Week 2
-featurized_dataset_id | Platform | The ID of the dataset containing the featurized data       | Dataset ID created as part of [Week2Notebook.ipynb](notebooks/assignments/Week2Notebook.ipynb) | Weeks 3 & 4
-scoring_dataset_id | Platform | The ID of the dataset containing the scoring output        | Dataset ID created as part of [Week4Notebook.ipynb](notebooks/assignments/Week4Notebook.ipynb) | Week 5
-environment | Platform | The type of environment this organization is running under | **prod** if running in production, **stage** otherwise | Weeks 1 through 5
-client_id | Authentication | The client ID used for API calls                           | See section below on **Authentication Information** | Weeks 1 through 5
-client_secret | Authentication | The client secret used for API calls                       | See section below on **Authentication Information** | Weeks 1 through 5
-private_key_path | Authentication | The path to the private key for your JWT token             | See section below on **Authentication Information** | Weeks 1 through 5
-tech_acct_id | Authentication | The technical account ID used for API calls | See section below on **Authentication Information** | Weeks 1 through 5
-export_path | Cloud | The path in your Cloud Storage account where featurized data will be exported | Default to `cmle/egress` | Weeks 2, 3 & 4
-import_path | Cloud | The path in your Cloud Storage account where scoring results will be written | Default to `cmle/ingress` | Weeks 4 & 5
-data_format | Cloud | The format of the files for the featurized data | Default to `parquet` | Weeks 2, 3 & 4
-compression_type | Cloud | The type of compression for the featurized data | Default to `gzip` | Weeks 2, 3 & 4
-model_name | Cloud | The name of the model | Default to `cmle_propensity_model` | Weeks 3 & 4
+![CMLE workflow and notebooks](<img/CMLE Notebooks.png>)
 
-We assume familiarity with the [connectivity to Adobe Experience Platform APIs](https://experienceleague.adobe.com/docs/experience-platform/landing/platform-apis/api-guide.html?lang=en), but for brevity the key setup points are listed below.
+The end-to-end workflow can be divided into 3 broad phases based on the services being used to implement the steps in the workflow. Initial exploration and preparation of AEP data relies on AEP services. Model training and scoring leverages tooling in the user's cloud-based ML environment (typically a ML platform such as Databricks ML, AWS Sagemaker, DataRobot, etc). Ingesting scores back into AEP and any code-based audience creation and activation based on those scores would again rely on AEP services. However, all of these phases can be executed in one or more notebooks from the user's ML environment without the user needing to switch contexts between AEP and their cloud-based ML tools.
 
-### Org-level Information
+We have divided the typical steps of this end-to-end flow into a set of modular notebooks which together demonstrate the steps involved in typical machine learning project involving AEP data. This makes it easier to use the notebooks as a reference for implementing specific activities, and to select and adapt code from the relevant notebooks to implement a real-world use case. In practice, a data scientist may prepare a single notebook the implements the end-to-end pipeline for their ML project. Alternatively, a data scientist may simply adapt the sample code for querying AEP data and making it available in their ML environment before continuing the project use UI-based features in their ML platform.
 
-To connect programmatically to your Adobe Experience Platform instance, we need to know a couple pieces of information:
-- The **IMS organization ID**: this represents your entire organization and is the same across all your sandboxes.
-- The **sandbox name**: You may have multiple sandboxes for different environments or business units. The default one is `prod`
+The sample notebooks included in this repository are briefly described below. Detailed documentation for each notebook is interspersed with the code in the notebooks themselves
 
-You may already have this information, in which case you can skip to the next section. If you do not, you can log into your Adobe Experience Platform instance and press `CTRL + i` (even on Mac) to bring up the data debugger as shown below which contains your organization ID.
 
-![UI Data Debugger](img/ui-data-debugger.png)
+### [Generate synthetic data](../notebooks/SyntheticData.ipynb)
 
-For the sandbox name, you can get it one of 2 ways:
-- If you do not have admin access to your Adobe Experience Platform instance, a human-readable version of it can be found in the top-right corner. Be aware though it should be all lowercase and not contain any spaces so if you are unsure you can ask your instance admin to verify.
-- If you have admin access, you can navigate to the `Sandboxes` panel to the left, click on `Browse` and note the **name** value of the instance you want to use.
+This notebook provides code for generating datsets of synthetic profiles and experience events in your AEP that will be used to illustrate the CMLE workflow.
 
-![UI Sandboxes](img/ui-sandboxes.png)
+### EDA and Featurization with Query Service
 
-### Authentication Information
+This notebook includes examples of exploratory analysis on AEP datasets using interactive queries via AEP Query Service. These are followed with examples of featurization queries to create a training dataset for the example propensity model.
 
-Authentication with the Adobe Experience Platform can be performed using JSON Web Tokens (JWT) and will allow you to interact with most Adobe Experience Platform APIs and handle automated processes such as:
-- Creating schemas and/or datasets
-- Ingesting data
-- Querying data
-- ...
+### Export training data
 
-The process to setup a JWT connection is described below, and you will need to capture a few fields that will be used throughout the notebooks and configurations in this repository.
+This notebook illustrates exporting the training dataset to cloud storage that can be read by the user's ML tools.
 
-The first step is to go to the [Adobe Developer Console](https://console.adobe.io/) which comes with any Adobe Experience Platform organization. Make sure you are logged into the organization you would like to use. You should be presented with a screen like below:
+### Train a propensity model
 
-![Console Home Screen](img/console-home.png)
+This notebook illustrates training a propensity model. It assumes Databricks ML as the user's ML environment, but is written generically (i.e. without heavy use of Databricks-specific features/APIs) so that it can be adapted to other platforms.
 
-Once on that page, there are 2 options:
-- You already have an existing developer project setup. If so, just click on that project that should appear here.
-- You haven't used the developer console yet or do not yet have a developer project setup. If so, just click on `Create new project` which will create it immediately and take you to its home page.
+### Score the propensity model
 
-Once on the project page, several options are presented to you as shown below. Click on `Add API`.
+This notebook illustrates scoring the trained propensity model to produce a dataset of propensity scores for each AEP customer profile.
 
-![Console Project Screen](img/console-project.png)
+### Ingest scores to AEP
 
-In this new API page, you will be shown the different types of APIs that are available. In our case, we want to create an `Experience Platform API`. Select that option and press `Next`.
+This brief notebook illustrates ingesting the dataset of propensity scores to enrich the customer profiles in AEP.
 
-![Console API Screen](img/console-api.png)
+### Create and activate audiences from code
 
-This next page allows you to configure access to your API. There's a couple options related to your choice of [SSH key pair](https://www.ssh.com/academy/ssh/public-key-authentication):
-- If you do not have a key pair yet or would like to use a brand new one, you can select the first option to generate one on the fly.
-- If you already have a key pair generated, you are able to upload it here and reuse it by selecting the second option.
+This notebook illustrate how the user can create audiences from the scores and activate those audiences through AEP apps from their notebook code.
 
-![Console API Configuration Screen](img/console-api-config.png)
+## Getting started with the CMLE notebooks
 
-For the purposes of this setup we recommend creating a new keypair with the first option. Clicking on `Next` will prompt you to download a `zip` file containing your public and private key, so make sure to accept and store it securely on your file system.
+The CMLE notebooks make use of the [aepp](https://github.com/adobe/aepp/tree/main) package, which provides functions for making requests to [AEP APIs](https://developer.adobe.com/experience-platform-apis/). The following steps are required to set up access to AEP APIs through `aepp` (if you wish to code requests to AEP APIs yourself rather than use `aepp`, you will still need to complete these steps to get a credential with the necessary permissions and store it safely):
 
-![Console API Keypair Download Screen](img/console-api-keypair.png)
+### Step 1: Create an API credential in the [Adobe Developer Console](https://developer.adobe.com/console/home).
 
-For example here we called our `zip` file `demo-config.zip`. Once download is complete, go into your terminal and extract the private key and certificate into a directory by using the following command:
+API credentials may be created by anyone with Developer access to AEP in your organization. If you are a data scientist without Developer access, ask your manager or Adobe Admin to create a credential for you, or to grant you Developer access to create one yourself.
 
-```
-$ unzip demo-config.zip -d demo-config
-Archive:  demo-config.zip
- extracting: demo-config/certificate_pub.crt
- extracting: demo-config/private.key
-```
+We recommend creating an Oauth2 API credential specifically for Cloud ML workflows with appropriate permissions and labels (as described below in "Grant permissions to credentials for Cloud ML).
 
-This file `private.key` is what you will need later on so make sure to remember where it is located.
+See [Authenticate and access Experience Platform APIs](https://experienceleague.adobe.com/docs/experience-platform/landing/platform-apis/api-authentication.html) detailed instructions instructions on creating an API credential.
 
-Make sure to note down the public key displayed on this screen as well, then click `Next`. This next page will ask you to select a product profile. It will depend what profiles are configured on your org - they are used to scope access to only what is necessary. You can work with your organization administrator to find out the right profile, and then select it as shown in the screen below.
+### Step 2: Get the necessary attribute-based access control permissions for your credential.
 
-![Console API Profile Screen](img/console-api-profile.png)
+An API credential will not be able to access AEP APIs without explicit permissions granted by your organization's Adobe System Admin for specific AEP services and data. A System Admin can assign the API credential to a Role and manage permissions for Role in the [Permissions](https://experience.adobe.com/admin/permissions) UI in AEP. 
 
-Now your setup is complete, and you will be taken to the summary page for your API connection. You can verify that everything looks correct and scroll down to see a few fields:
+You will need to provide your system admin with the name and technical account email of your API credential. System admins can find more details about managing permissions for API credentials [here](https://experienceleague.adobe.com/docs/experience-platform/landing/platform-apis/api-authentication.html#get-abac-permissions) and [here](https://experienceleague.adobe.com/docs/experience-platform/access-control/abac/permissions-ui/permissions.html?lang=en#manage-api-credentials-for-role).
 
-![Console API Summary 1](img/console-api-summary-1.png)
-![Console API Summary 2](img/console-api-summary-2.png)
+The minimum permissions required to execute these notebooks include:
+- Sandbox(es) that will be used for data science (usually prod)
+- Data modeling: Manage Schemas
+- Data management: Manage Datasets
+- Data ingestion: View Sources
+- Destinations: Manage and Activate Dataset Destinations
+- Query Service: Manage Queries
 
-The main fields you'll want to note down for further reference in this repository are:
-- **Client ID**: This is used to identify yourself when you use programmatic API access.
-- **Client secret**: Click on `Retrieve client secret` to see the value and **do not share it with anyone**
-- **Technical account ID**
+#### Label access
 
-In addition to those, you'll want to save your private key.
-Make sure to save it in a secure location on your disk as it will need to be pointed to in your configuration file.
+By default, a Role (and API credentials assigned to that role) is blocked from accessing any labeled data. Given the organization's data governance policies, a System Admin may grant the Role access to certain labeled data that is deemed appropriate for data science usage. 
 
-## Setup
+We recommend that any API credential used for CMLE workflows **NOT** have access to data labeled `C9` (No Data Science), `PSPD` (Permitted Sensitive Personal Data), or `RHD` (PHI/Regulated Health Data). AEP customers are responsible to manage label access and policies appropriately in order to comply with relevant regulations and organizational policies.
 
-### 1. Local setup
+### Step 3: Update the [config.ini](../conf/config.ini) file with credential and environment information
 
-Make sure to set the environment variable `ADOBE_HOME` to the root of this repository. This can be accomplished with the following command for example:
+Once you have an API credential with the required permissions, you'll need to add the credntial and environment values to the [config.ini](../conf/config.ini) file.
 
-```
-$ export ADOBE_HOME=`pwd`
-```
+The [config.ini](../conf/config.ini) file should look like the following after copying the CMLE repository:
 
-For simplicity you can set it in your `.bashrc` or `.zshrc` (or the corresponding profile file if you use a different shell) to ensure it gets loaded automatically.
+```ini
+[Platform]
+ims_org_id=
+sandbox_name=
+environment=prod
 
-After setting up the configuration file described above, you can start your Jupyter notebook server **at the root of this repository**.
-It is important to start it at the root because the notebooks look for images on parent folders, so images will not render properly if you start the server too deep.
+[Synthetic]
+fieldgroup_id=
+events_schema=
+events_dataset=
+profile_schema=
+profile_dataset=
 
-### 2. Databricks setup
+[Authentication]
+client_id=
+client_secret=
+scopes=openid, AdobeID, read_organizations, additional_info.projectedProductContext, session
+tech_acct_id=
 
-Here are the pre-requisites to run these notebooks on Databricks:
-- Databricks Runtime Version should be of type **ML** and not Standard.
-- Databricks Runtime Version should be above `12.1 ML`
-- Your compute environment can be any number of nodes on any instance type.
-- You will need to create a personal user token
-- You will need to define $DBUSER to be your user on the databricks cluster
-- To begin please setup a personal access token on your databricks cluster by following these instructions [Access_Token Setup](https://docs.databricks.com/dev-tools/auth.html)
-The next few steps assume you have already installed and setup the [Databricks CLI](https://docs.databricks.com/dev-tools/cli/index.html) to point to your Databricks workspace.
-- Copy the private key file you obtained following the configuration file setup to your Databrick workspace filesystem using:
-
-```
-$ databricks fs cp /path/to/private.key dbfs:/FileStore/shared_uploads/$DBUSER/cmle/keypairs/private.key
-```
-- Update the [configuration file](./conf/config.ini) to point the field `private_key_path` to the destination path, for example `private_key_path=/dbfs/FileStore/shared_uploads/$DBUSER/cmle/keypairs/private.key`
-- Copy the updated configuration file to your Databricks workspace filesystem using:
-
-```
-$ databricks fs cp conf/config.ini dbfs:/FileStore/shared_uploads/$DBUSER/cmle/conf/config.ini
+[Cloud]
+export_path=cmle/egress
+import_path=cmle/ingress
+data_format=parquet
+compression_type=gzip
+model_name=cmle_propensity_model
 ```
 
-- Import the notebooks in your workspace. Please refer to the `Contents` section of this README to determine which notebooks should run on Databricks.
-For example to import the week 3 notebook you can do:
+You will need to update the file with values for the following fields:
+- `ims_org_id`: You can easily find the IMS Org ID by clicking `CTRL+i` anywhere in the AEP UI
+- `sandbox_name`: Refer to [Sandboxes](https://experience.adobe.com/platform/sandbox/browse?limit=50&page=1&sortField=title) in the AEP UI to find the name (not the title) of the sandbox you will be using
+- `client_id`: The Client ID for the API credential obtained in [Step 1](#step-1-create-an-api-credential-in-the-adobe-developer-console)
+- `client_secret`: The Client Secret for the API credential obtained in [Step 1](#step-1-create-an-api-credential-in-the-adobe-developer-console)
+- `tech_acct_id`: The Technical Account Email for the API credential obtained in [Step 1](#step-1-create-an-api-credential-in-the-adobe-developer-console)
 
+If you are an Adobe employee using the CMLE notebooks in an internal stage IMS Org, change the value for `environment` from "prod" to "stage".
+
+The `[Synthetic]` section stores ID references to the schema and dataset objects that are created in the `SyntheticData` notebook. These will be populated and referenced by the code in the notebooks, so you may leave them blank to start.
+
+The `[Cloud]` section is pre-populated for the example use case illustrated in the notebooks and can be left as is, or modified as needed if you are adapting the notebooks for your own project.
+
+If you are using git with your copy of the CMLE directory, be sure to add the config.ini file to `.gitignore` to avoid accidentally publishing your credential information to a remote repository.
+
+### Step 4: Configure `aepp` to authenticate with AEP APIs
+
+To use the `aepp` package in your code you will need to read the [config.ini](../conf/config.ini) file using the standard `configparser` package and configure the connection to the AEP APIs. The following cell from the [Synthetic data generation](../notebooks/SyntheticData.ipynb) notebook provides an example:
+
+```python
+import os
+from configparser import ConfigParser
+import aepp
+
+os.environ["ADOBE_HOME"] = os.path.dirname(os.getcwd())
+
+if "ADOBE_HOME" not in os.environ:
+    raise Exception("ADOBE_HOME environment variable needs to be set.")
+
+config = ConfigParser()
+config_file = "config.ini"
+config_path = os.path.join(os.environ["ADOBE_HOME"], "conf", config_file)
+
+if not os.path.exists(config_path):
+    raise Exception(f"Looking for configuration under {config_path} but config not found, please verify path")
+
+config.read(config_path)
+
+aepp.configure(
+  org_id=config.get("Platform", "ims_org_id"),
+  tech_id=config.get("Authentication", "tech_acct_id"), 
+  secret=config.get("Authentication", "client_secret"),
+  scopes=config.get("Authentication", "scopes"),
+  client_id=config.get("Authentication", "client_id"),
+  environment=config.get("Platform", "environment"),
+  sandbox=config.get("Platform", "sandbox_name")
+)
 ```
-$ databricks workspace mkdirs /Users/$DBUSER/cmle
-$ databricks workspace import notebooks/assignments/Week3Notebook.ipynb /Users/$DBUSER/cmle/Week3Notebook -l python -f jupyter
+
+If necessary, modify the `config_path` in your code with the actual location of your config.ini file.
+
+You can test the connection to AEP APIs by executing the following lines:
+
+```python
+from aepp import schema
+schema.Schema().getTenantId()
 ```
+If successful, your organization's AEP tenant ID will be displayed in the cell output.
 
-- Create a compute environment following the pre-requisites mentioned above, and make sure to include in the `Environment variables` section the following:
+## Troubleshooting
 
-```
-ADOBE_HOME=/dbfs/FileStore/shared_uploads/$DBUSER/cmle
-```
+If the connection test above is unsuccessful, you will likely get `KeyError: 'tenantId'`. This usually means that the API credential you are using to connect to AEP does not have the required permissions (the "Data modeling: Manage Schemas" permission in this case). Try the following to resolve the error:
 
-![Environment Variables](img/databricks-env.png)
+- Confirm with your Adobe System Admin that your API credential has been added to a Role that has the permissions specified above.
+- Check your `config.ini` file and make sure that your environment and credential information is correct.
 
-- After the compute environment is started successfully, attach the imported notebook to it. You are now ready to execute it.
+If your configuration is correct and you are able to successfully make calls to `aepp` methods, you may sometimes get an unsuccessful response from the AEP server. This may happen if you try to create an object in AEP that already exists, or get an object that does not exist, or attempt to send a malformed payload with a request. Most `aepp` methods make a request to an AEP API endpoint and return the response from the server. Print the response and review it to get error message from the API. This will usually give you enough information to understand the problem with the request and fix it.
 
-### 3. Azure ML setup
+## Helpful resources
 
-Not yet supported.
-
-### 4. SageMaker setup
-
-Not yet supported.
+- [aepp](https://github.com/adobe/aepp/tree/main)
+- [Authenticate and access Experience Platform APIs](https://experienceleague.adobe.com/docs/experience-platform/landing/platform-apis/api-authentication.html) 
+- [Adobe Experience Platform APIs](https://developer.adobe.com/experience-platform-apis/)
+- [Query Service Guide](https://experienceleague.adobe.com/docs/experience-platform/query/home.html?lang=en)
