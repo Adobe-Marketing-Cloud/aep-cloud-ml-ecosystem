@@ -28,14 +28,14 @@ The sample notebooks are intended to be used in one of two ways:
 1. As a tutorial for using AEP data in ML workflows
 	- Ideally, use a dedicated AEP sandbox for completing the tutorial, to avoid mixing synthetic data with real customer data. You can reset or delete the sandbox after completing the tutorial to free it up for other use.
 	- Clone or download this repository to create a copy in your ML environment.
-	- Follow the instructions in [Getting started with the CMLE notebooks](#getting-started-with-the-cmle-notebooks) to get an AEP API credential with the required permissions and update the [config.ini](../conf/config.ini) file with the required values.
+	- Follow the instructions in [Getting started with the CMLE notebooks](#getting-started-with-the-cmle-notebooks) to get an AEP API credential with the required permissions and update the [config.ini](</conf/config.ini>) file with the required values.
 	- Review and execute the cells in each notebook, in order to demonstrate and validate the workflow in your environment
 	- Modify the code in the notebooks as needed to adapt to your environment
 2. As a template for AEP-related ML projects for your organization
 	- Fork the CMLE repository as a starting template for a new ML project
 	- Alternatively, simply reference the code in these notebooks as helpful examples to start a new project from scratch
 
-> **:warning: Warning**  
+> [!WARNING]  
 > The workflow illustrated in these notebooks involves exporting datasets from AEP to a cloud storage destination, where it can be read and processed using external machine learnig tools. As such, there is some risk of sensitive personal data leaving the Experience Platform and being used inappropriately outside of the Platform.  
 >   
 > Experience Platform provides data governance tools for you to manage your data usage obligations and help minimize this risk. You are responsible ensuring that data in the Experience Platform is properly labeled before querying or exporting that data. This includes manually re-applying labels to derived datasets created from query output.  Derived datasets from queries do not support the processing of sensitive personal data. You are responsible for understanding the limitations and obligations of your data and how you use that data in Experience Platform and the destination platform, which may have its own rules and obligations for incoming and outgoing data.  Learn more about [data governance tools](https://experienceleague.adobe.com/docs/experience-platform/data-governance/home.html?lang=en) in Experience Platform.
@@ -51,7 +51,7 @@ We have divided the typical steps of this end-to-end flow into a set of modular 
 The sample notebooks included in this repository are briefly described below. Detailed documentation for each notebook is interspersed with the code in the notebooks themselves
 
 
-### [Generate synthetic data](../notebooks/SyntheticData.ipynb)
+### [Generate synthetic data](</notebooks/SyntheticData.ipynb>)
 
 This notebook provides code for generating datsets of synthetic profiles and experience events in your AEP that will be used to illustrate the CMLE workflow.
 
@@ -111,11 +111,11 @@ By default, a Role (and API credentials assigned to that role) is blocked from a
 
 We recommend that any API credential used for CMLE workflows **NOT** have access to data labeled `C9` (No Data Science), `PSPD` (Permitted Sensitive Personal Data), or `RHD` (PHI/Regulated Health Data). AEP customers are responsible to manage label access and policies appropriately in order to comply with relevant regulations and organizational policies.
 
-### Step 3: Update the [config.ini](../conf/config.ini) file with credential and environment information
+### Step 3: Update the [config.ini](</conf/config.ini>) file with credential and environment information
 
-Once you have an API credential with the required permissions, you'll need to add the credntial and environment values to the [config.ini](../conf/config.ini) file.
+Once you have an API credential with the required permissions, you'll need to add the credntial and environment values to the [config.ini](</conf/config.ini>) file.
 
-The [config.ini](../conf/config.ini) file should look like the following after copying the CMLE repository:
+The [config.ini](</conf/config.ini>) file should look like the following after copying the CMLE repository:
 
 ```ini
 [Platform]
@@ -161,7 +161,7 @@ If you are using git with your copy of the CMLE directory, be sure to add the co
 
 ### Step 4: Configure `aepp` to authenticate with AEP APIs
 
-To use the `aepp` package in your code you will need to read the [config.ini](../conf/config.ini) file using the standard `configparser` package and configure the connection to the AEP APIs. The following cell from the [Synthetic data generation](../notebooks/SyntheticData.ipynb) notebook provides an example:
+To use the `aepp` package in your code you will need to read the [config.ini](</conf/config.ini>) file using the standard `configparser` package and configure the connection to the AEP APIs. The following cell from the [Synthetic data generation](../notebooks/SyntheticData.ipynb) notebook provides an example:
 
 ```python
 import os
