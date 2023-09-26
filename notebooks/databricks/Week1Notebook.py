@@ -9,16 +9,13 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Before we run anything, make sure to install the following required libraries for this notebook. They are all publicly available libraries and while the latest version should work fine.
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC # Setup
 # MAGIC
-# MAGIC This notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
+# MAGIC There are a handful of libraries required to use this notebook and the ones that follow it. If you haven't already done so, please run the [RunMe Notebook]($./RunMe) the create a cluster that has the required libraries installed. They are all publicly available libraries and while the latest version should work fine, it is best practice to pin particular versions for your production workflows to ensure that upstream library releases don't causing breaking changes to your pipelines.
 # MAGIC
-# MAGIC The next cell will be looking for your configuration file under your **ADOBE_HOME** path to fetch the values used throughout this notebook. See more details in the Setup section of the **README** to understand how to create your configuration file.
+# MAGIC This notebook also requires some configuration data to connect to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
+# MAGIC
+# MAGIC The next cell will be looking for your configuration file under your **ADOBE_HOME** path to fetch the values used throughout this notebook. This environment variable is configured on your cluster to point to the DBFS FUSE mount point location of `/dbfs/home/{your_user_name}/.adobe`. See more details in the Setup section of the **README** to understand how to create your configuration file. Note that for deployment of production jobs, you'll want to take advantage [Databricks secret management](https://docs.databricks.com/en/security/secrets/index.html).
 # MAGIC
 # MAGIC Some imports and utility functions that will be used throughout this notebook are provided in the [Common Include]($./CommonInclude) notebook since they'll also be used in all the other notebooks.
 # MAGIC
@@ -33,9 +30,9 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC In order to generate synthetic data we'll need to first create a schema and a dataset using the [aepp Python library](https://github.com/pitchmuc/aepp), this library is a rest API interface around the workflow in the AEP UI.  Please see the following reference [guide](https://developer.adobe.com/experience-platform-apis/) for the underlying APIS.  For the AEP UI workflow please click [here](https://experienceleague.adobe.com/docs/experience-platform/xdm/tutorials/create-schema-ui.html?lang=en).
+# MAGIC In order to generate synthetic data we'll need to first create a schema and a dataset using the [aepp Python library](https://github.com/pitchmuc/aepp). This library is a REST API based on the workflow in the AEP UI.  Please see the following reference [guide](https://developer.adobe.com/experience-platform-apis/) for the underlying API's.  For the AEP UI workflow please click [here](https://experienceleague.adobe.com/docs/experience-platform/xdm/tutorials/create-schema-ui.html?lang=en).
 # MAGIC
-# MAGIC We will now need to configure the aepp library and setup authentication credentials. For this please setup the following pieces of information. For information about how you can get these, please refer to the `Setup` section of the **Readme**:
+# MAGIC Your authentication credentials have already been loaded by the [Common Include]($./CommonInclude). Before continuing, please ensure you've configured the following pieces of information in the configuration file in your **ADOBE_HOME** directory, according to the `Setup` section of the **Readme**:
 # MAGIC - Client ID
 # MAGIC - Client secret
 # MAGIC - Private key
@@ -55,17 +52,13 @@
 # MAGIC
 # MAGIC We will now create the schema to support our synthetic data. We need a few fields which will be included in the synthetic data:
 # MAGIC
-# MAGIC Direct Marketing information
-# MAGIC Web details
-# MAGIC Identity information
-# MAGIC These are already provided in your AEP instance as default field groups, so we'll be leveraging that for creation below.  The image below identifies the workflow in the AEP UI to create the schema
-# MAGIC
-# MAGIC We will now create a schema to support the synthetic data to be generated.  
-# MAGIC The following are the fields to be included in the synthetic data:
-# MAGIC - Direct Marketing Information
-# MAGIC - Web Details
+# MAGIC - Direct marketing information
+# MAGIC - Web details
 # MAGIC - Identity information
-# MAGIC The above fields are already provided in the AEP instance as default field groups , we'll be using that information to create the schema details below.  We first print out the tenantId, as this represents our ims org name.
+# MAGIC
+# MAGIC These are already provided in your AEP instance as default field groups, so we'll be leveraging that for creation below.  The image below identifies the workflow in the AEP UI to create the schema. The above fields are already provided in the AEP instance as default field groups, we'll be using that information to create the schema details below.
+# MAGIC
+# MAGIC We first print out the tenantId, as this represents our ims org name.
 
 # COMMAND ----------
 
@@ -82,7 +75,7 @@ print(f"tenant_id: {tenant_id}")
 # MAGIC %md
 # MAGIC ### 1.1.1 Creating the Experience Event field group
 # MAGIC
-# MAGIC Our goal is to create schemas for the Profile and Experience Events and fieldgroups in these schemas, a fieldgroup allows us to define and query segments around the profile and experience events, conceptually a fieldgroup allows us to gather together a set of fields to represent data in our segments
+# MAGIC Our goal is to create schemas for the Profile and Experience Events and fieldgroups in these schemas. A fieldgroup allows us to define and query segments around the profile and experience events. Conceptually a fieldgroup allows us to gather together a set of fields to represent data in our segments.
 
 # COMMAND ----------
 
@@ -171,9 +164,9 @@ display_link(profile_fieldgroup_link, profile_fieldgroup_res['title'])
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 1.1.3 Creating the ExperienceEvent schema
+# MAGIC ### 1.1.3 Creating the Experience Event schema
 # MAGIC
-# MAGIC Now create the experience event schema and the descriptor, schema descriptors are tenant-level metadata,  unique to your IMS Organization and all descriptor operations take place in the tenant container.
+# MAGIC Now create the experience event schema and the descriptor. Schema descriptors are tenant-level metadata, unique to your IMS Organization and all descriptor operations take place in the tenant container.
 
 # COMMAND ----------
 
@@ -343,7 +336,7 @@ cat_conn.enableDatasetProfile(dataset_id)
 # MAGIC
 # MAGIC Our goal in this task will be to create a propensity model for "subscription" events.
 # MAGIC
-# MAGIC A subscription event will be defined as an event where a `web.formFilledOut` event is recorded, with a specific 
+# MAGIC A subscription event will be defined as an event where a `web.formFilledOut` event is recorded. 
 # MAGIC These will be events where a customer subscribes to the desired plan.
 # MAGIC
 # MAGIC In order to incorporate our custom experience events we replace the identityMap with the tenantId
@@ -354,19 +347,19 @@ cat_conn.enableDatasetProfile(dataset_id)
 # MAGIC ## 2.1 EventTypes and their contribution to propensity
 # MAGIC
 # MAGIC We will allow for several types of experience events to be received for each user.
-# MAGIC For each user, we will create a "generative" model of subscription as follows:
+# MAGIC We will create a "generative" model of subscriptions as follows:
 # MAGIC
-# MAGIC 1. We sample randomly from a poisson distribution for the number of advertising impressions, webPageViews, emailsSent. **These events can happen at random times over a 10 week interval.**
+# MAGIC 1. We sample randomly from a [Poisson distribution](https://en.wikipedia.org/wiki/Poisson_distribution) for the number of advertising impressions, webPageViews, and emailsSent. **These events can happen at random times over a 10 week interval.**
 # MAGIC 2. For each of these "base" exposure events, we then have a corresponding conversion:
 # MAGIC     - If an advertising impression occurs, we then allow for an advertising click to happen, with a certain probability.  
-# MAGIC     - If a web Page view occurs, then linkClicks, productViews, purchases, propositionDisplays, Interacts and Dismisses can all occur.
+# MAGIC     - If a web page view occurs, then linkClicks, productViews, purchases, propositionDisplays, Interacts and Dismisses can all occur.
 # MAGIC     - For an Email Sent, opens and clicks can then also occur. 
 # MAGIC     
-# MAGIC 3. After all these base events have been generated, we then have a timeseries of events for each user. Each of the timeseries events affects the user's propensity to subscribe. After each event the user then has a certain probability of subscribing. The subscription is then evaluated with a Bernoulli draw - if the user subscribes, no further subscription evaluations are made. If the subscription does not happen, the subscription possibility will continue to be evaluated. 
+# MAGIC 3. After all these base events have been generated, we then have a timeseries of events for each user. Each of the timeseries events affects the user's propensity to subscribe. After each event the user then has a certain probability of subscribing. The subscription is then evaluated with a [Bernoulli](https://en.wikipedia.org/wiki/Bernoulli_distribution) draw - if the user subscribes, no further subscription evaluations are made. If the subscription does not happen, the subscription possibility will continue to be evaluated. 
 # MAGIC
 # MAGIC 4. Extra - if more than 10 advertising impressions, or 5 emails are sent, the user churns, and no more events for that user are generated.
 # MAGIC
-# MAGIC You can find the definitions of the logic for the simulations in the [Simulation Helpers]($./SimulationHelpers) notebook. Running the notebook with the `%run` magic command runs it as if it were part of this notebook.
+# MAGIC You can find the definitions of the logic for the simulations in the [Simulation Helpers]($./SimulationHelpers) notebook. [Running the notebook](https://docs.databricks.com/en/notebooks/notebook-workflows.html) with the `%run` magic command runs it as if it were part of this notebook.
 
 # COMMAND ----------
 
@@ -379,7 +372,9 @@ cat_conn.enableDatasetProfile(dataset_id)
 # MAGIC
 # MAGIC With the simulation logic defined, we can now use it to create our synthetic events dataset. We'll create the events in a [Delta table](https://docs.databricks.com/en/delta/index.html) first so we'll have a local copy to work from for the upload. 
 # MAGIC
-# MAGIC Also, since the simulation logic doesn't have any dependencies across users, we can treat it as an [embarrassingly parallel](https://en.wikipedia.org/wiki/Embarrassingly_parallel) problem and create them in parallel across all of the worker nodes in our Databricks cluster instead of just on the driver. This allows you to scale up to larger simulations, as will as showcasing techniques you can apply to other data sources you may want to ingest into the platform.
+# MAGIC Also, since the simulation logic doesn't have any dependencies across users, we can treat it as an [embarrassingly parallel](https://en.wikipedia.org/wiki/Embarrassingly_parallel) problem and create them in a distributed fashion across all of the worker nodes in our Databricks cluster rather than in a single thread just on the driver. This allows you to scale up to larger simulations, as will as showcasing techniques you can apply to other data sources you may want to ingest into the platform.
+# MAGIC
+# MAGIC For more information on mapInPandas and other vectorized Python functions available in Databricks, please refer to [the documentation](https://docs.databricks.com/en/pandas/pandas-function-apis.html#map).
 
 # COMMAND ----------
 
@@ -387,12 +382,26 @@ from aepp import ingestion
 
 ingest_conn = ingestion.DataIngestion()
 
-
+# Wrap the main simulation function in another function we'll pass to mapInPandas.
+# This function will receive batches of mock id's we'll use to drive the simulation
+# process. 
+# 
+# Technical detail (feel free to skip):
+#   An alternative would have been to pass in specifications to call for batches
+#   from individual rows, but that can run into challenges with AQE automatically 
+#   coalescing partitions on us. So this approach, though still a bit technical, can
+#   end up being a little easier to understand since we avoid that.
 def create_data_for_n_users_dataframe(dfs):
+    # mapInPandas takes in batches of records as Pandas dataframes
     for df in dfs:
+        # determine the size and start id for this batch
         batch_size = len(df)
         first_user_id_for_batch = df.id.min()
+
+        # use those parameters for that batch to call our core simulation logic
         events = create_data_for_n_users(batch_size, first_user_id_for_batch)
+
+        # and then yield the batch resulting from that call
         yield pd.DataFrame(events)
 
 
@@ -409,6 +418,7 @@ batch_schema = T.StructType([
 events_table_name = "synthetic_events"
 target_event_count = num_batches * batch_size
 
+# Run the simulation if the table isn't there and hasn't already been populated
 if spark.catalog.tableExists(events_table_name) and not spark.table(events_table_name).isEmpty():
     print("table already exists and has data")
 else:
@@ -418,6 +428,7 @@ else:
         .mapInPandas(create_data_for_n_users_dataframe, batch_schema))
     all_events.write.mode("overwrite").saveAsTable("synthetic_events")
 
+# build and show a link to the resulting Delta table
 all_events = spark.table("synthetic_events")
 synthetic_table_link = f"/explore/data/{spark.catalog.currentCatalog()}/{spark.catalog.currentDatabase()}/{events_table_name}"
 display_link(synthetic_table_link, "Synthetic Delta Table in Unity Catalog")
@@ -438,7 +449,7 @@ display(all_events)
 # MAGIC
 # MAGIC For more details about batch ingestion you can find API details [here](https://experienceleague.adobe.com/docs/experience-platform/ingestion/batch/overview.html?lang=en).
 # MAGIC
-# MAGIC Here again, we can take advantage of parallelization to upload multiple batches simultaneously across all the worker nodes in our cluster, using a similar technique as we used above.
+# MAGIC Here again, we can take advantage of parallelization and distributed compute to upload multiple batches simultaneously across all the worker nodes in our cluster, using a similar technique as we used above.
 
 # COMMAND ----------
 
@@ -498,6 +509,7 @@ def ingest_events(dfs: List[pd.DataFrame]):
         end_time = time.time()
         duration = end_time - start_time
 
+        # Return a row with summary statistics for each batch uploaded
         yield pd.DataFrame([{
             "batch_id": batch_id,
             "batch_size": len(batch_data),
@@ -512,6 +524,8 @@ def ingest_events(dfs: List[pd.DataFrame]):
 ingestion_results_table_name = "batch_ingestion_results"
 num_ingestion_partitions = 128
 
+# Kick off the upload if it hasn't already been processed
+# .. i.e., if the ingestion results table isn't already there
 if not spark.catalog.tableExists(ingestion_results_table_name):
     batch_ingestion_results = (
         all_events
@@ -565,7 +579,7 @@ while not all_ingested:
 # MAGIC We do the following steps:
 # MAGIC
 # MAGIC - Connect to query service using the aepp configuration parameters
-# MAGIC - Discover the schema of data, and explore a few rows
+# MAGIC - Discover the schema of the data, and explore a few rows
 # MAGIC - Compute basic statistics
 # MAGIC - Examine correlations among features, to inform feature creation
 
@@ -577,7 +591,7 @@ while not all_ingested:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Every dataset ID in the Adobe Experience Platform is tied to a table name in Query Service world. We can easily get the table name by doing a lookup on the dataset ID and extracting the table name from the tags:
+# MAGIC Every dataset ID in the Adobe Experience Platform is tied to a table name in the Query Service world. We can easily get the table name by doing a lookup on the dataset ID and extracting the table name from the tags:
 
 # COMMAND ----------
 
@@ -587,12 +601,12 @@ cat_conn = catalog.Catalog()
 
 dataset_info = cat_conn.getDataSet(dataset_id)
 table_name = dataset_info[dataset_id]["tags"]["adobe/pqs/table"][0]
-table_name
+print(table_name)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC When you set the connection to the query service object you'll setup a connection to the actual table you need to connect to, this will be faster and use up less resources from the query service API
+# MAGIC When you set the connection to the query service object, you'll setup a connection to the actual table you need to connect to. This will be faster and less resource-intensive for the query service API.
 
 # COMMAND ----------
 
@@ -610,7 +624,7 @@ qs_cursor = queryservice.InteractiveQuery(qs_conn)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC We can use the interactive session created just before to issue any kinds of queries to Query Service. As an example here we simply select all the fields in our synthetic data table.
+# MAGIC We can use the interactive session created just before to issue any kinds of queries to the Query Service. As an example, here we simply select all the fields in our synthetic data table.
 
 # COMMAND ----------
 
@@ -622,7 +636,7 @@ display(qs_cursor.query(sample_experience_event_query))
 # MAGIC %md
 # MAGIC ## 3.3 Querying Complex Fields
 # MAGIC
-# MAGIC Let's sample some of the fields in our dataset - we have different types, some are timestamps, some are just primitives like strings, and then some are complex nested XDM structures. Let's see what we get when we query it as-is: 
+# MAGIC Let's sample some of the fields in our dataset. We have different types. While some are timestamps and others are just primitives like strings, some are complex nested XDM structures. Let's see what we get when we query these as-is: 
 
 # COMMAND ----------
 
@@ -646,7 +660,7 @@ df["directMarketing"].iloc[0]
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now let's run the same query again but with a twist: we can set the `auto_to_json` flag to be true - this configuration ensures that complex structures are automatically converted into a json form so that the field names can be queried.
+# MAGIC Now let's run the same query again but with a twist: we can set the `auto_to_json` flag to be true. This configuration ensures that complex structures are automatically converted into a JSON object so that the field names can be easily queried.
 
 # COMMAND ----------
 
@@ -672,15 +686,16 @@ df["directMarketing"].iloc[0]
 # COMMAND ----------
 
 import json
+import pprint as pp
 
-json.loads(df["directMarketing"].iloc[0])
+pp.pprint(json.loads(df["directMarketing"].iloc[0]))
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 3.4 Manually get some basic statistics
 # MAGIC
-# MAGIC Let's look at the number of rows, number of profiles in our synthetic dataset as an example of basic computations that can be done with Query Service:
+# MAGIC Let's look at the number of rows and number of profiles in our synthetic dataset as an example of basic computations that can be done with Query Service:
 
 # COMMAND ----------
 
@@ -701,7 +716,7 @@ display(df)
 # MAGIC - First we have to **analyze** the table to create an actual sample with a specific sampling ratio.
 # MAGIC - Then we can query the actual sample created which will automatically extrapolate the numbers to the full dataset.
 # MAGIC
-# MAGIC As an example below, this is how we start by analyzing the table and creating a 5% sample:
+# MAGIC As an example below, we start by analyzing the table and creating a 5% sample:
 
 # COMMAND ----------
 
@@ -780,13 +795,13 @@ display(df_samples)
 # MAGIC <div class="alert alert-block alert-warning">
 # MAGIC <b>Note:</b>
 # MAGIC     
-# MAGIC You can also query the latest sample from that dataset by using `SELECT * from {table_name} WITHAPPROXIMATE` however it is not advised to do aggregation queries or joins with that since this is only a uniform random sample.
+# MAGIC You can also query the latest sample from that dataset by using `SELECT * from {table_name} WITHAPPROXIMATE`. However, it is not advised to do aggregation queries or joins with that since this is only a uniform random sample.
 # MAGIC </div>
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC We can see that the results are pretty accurate <1% error, and also the runtime is reduced by at least 20%, so using samples are a good choice for featurization data if we have a ML model that is not necessarily data-hungry.
+# MAGIC We can see that the results are pretty accurate &lt;1% error, and also the runtime is reduced by at least 20%, so using samples are a good choice for featurization data if we have a ML model that is not necessarily data-hungry.
 
 # COMMAND ----------
 
@@ -814,22 +829,32 @@ display(funnel_df)
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC Here, we launch a query to get number of users in each phase
-
-# COMMAND ----------
-
-import plotly.express as px
+from plotly import graph_objects as go
 
 email_funnel_events = [
     "directMarketing.emailSent", 
     "directMarketing.emailOpened", 
     "directMarketing.emailClicked", 
-    "web.formFilledOut"]
+    "web.formFilledOut"
+]
 
 email_funnel_df = funnel_df[funnel_df["eventType"].isin(email_funnel_events)]
 
-fig = px.funnel(email_funnel_df, y='eventType', x='distinctUsers')
+fig = go.Figure(
+    go.Funnel(
+        y=email_funnel_df["eventType"], 
+        x=email_funnel_df["distinctUsers"],
+        textposition="inside",
+        textinfo="value+percent initial",
+        opacity=0.65, 
+        marker={
+            "color": ["deepskyblue", "lightsalmon", "tan", "teal"],
+            "line": {"width": [4, 2, 2, 3, 1, 1], "color": ["wheat", "wheat", "blue", "wheat"]},
+        },
+        connector={"line": {"color": "royalblue", "dash": "dot", "width": 3}},
+    )
+)
+
 fig.show()
 
 # COMMAND ----------
@@ -864,7 +889,7 @@ display(event_correlation_df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now we join the results of this correlation to obtain a coocurrence matrix which we can then display to get a visual feel of which events are likely to be occurring together.
+# MAGIC Now we join the results of this correlation to obtain a cooccurrence matrix which we can then display to get a visual feel of which events are likely to be occurring together.
 
 # COMMAND ----------
 
@@ -880,13 +905,12 @@ import seaborn as sns
 pivoted = cocc_with_individual.pivot("eventType_First", "eventType_Later", "probability")
 sns.heatmap(pivoted);
 
-
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 4.3 A more robust correlation calculation
 # MAGIC
-# MAGIC Let's use an in-built feature of the query service (the Spark functions) to get a better handle of correlations between various eventTypes. We'll usee the `corr` function - which computes pearson correlation coefficients between a given eventType, and the target eventType
+# MAGIC Let's use an built-in feature of the query service (Spark functions) to get a better handle of correlations between various eventTypes. We'll use the [`corr` function](https://spark.apache.org/docs/3.5.0/api/sql/#corr) which computes [Pearson correlation coefficients](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient) between a given eventType and the target eventType.
 
 # COMMAND ----------
 
@@ -956,6 +980,7 @@ display(corrdf.fillna(0))
 # COMMAND ----------
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 fig, ax = plt.subplots(figsize=(5,10))
 sns.barplot(data=corrdf.fillna(0), y="feature", x="pearsonCorrelation")
 ax.set_title("Pearson Correlation of Events with the outcome event");

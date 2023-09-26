@@ -70,6 +70,9 @@ job_cluster_config = {
             "spark.databricks.delta.formatCheck.enabled": "false"
         },
         "num_workers": 4,
+        "spark_env_vars": {
+            "ADOBE_HOME": f"/dbfs/home/{current_user}/.adobe"
+        },
         "node_type_id": {"AWS": "i3.xlarge", "MSA": "Standard_DS3_v2", "GCP": "n1-highmem-4"},
         "custom_tags": {
             "usage": "solacc_testing",
@@ -84,7 +87,9 @@ pypi_packages = [
     "adlfs==2023.8.0",
     "aepp==0.3.1.post5",
     "mmh3==4.0.1",
-    "rstr==3.2.1"
+    "rstr==3.2.1",
+    "faker==19.6.2",
+    "https://ml-team-public-read.s3.amazonaws.com/wheels/data-monitoring/a4050ef7-b183-47a1-a145-e614628e3146/databricks_lakehouse_monitoring-0.3.0-py3-none-any.whl"
 ]
 
 job_json = {

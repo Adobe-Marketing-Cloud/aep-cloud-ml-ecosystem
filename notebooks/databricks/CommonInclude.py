@@ -13,7 +13,7 @@ if not hasattr(aepp.connector.AdobeRequest, "getData_orig"):
         *args,
         **kwargs,
     ):
-        # "fieldgroups/" was fixed in 0.3.1.post5 🎉
+        # "fieldgroups/" was fixed in 0.3.1.post5
         # .. but leaving patch could still help in case someone has older version installed
         targets = ["fieldgroups/", "schemas/", "descriptors/"]
         if params and "start" in params and any(t in endpoint for t in targets):
@@ -24,7 +24,7 @@ if not hasattr(aepp.connector.AdobeRequest, "getData_orig"):
         return self.getData_orig(endpoint, params, data, headers, *args, **kwargs)
 
     aepp.connector.AdobeRequest.getData = getDataPatched
-    print("aepp.connector.AdobeRequest.getData patched (TODO: integrate upstream and remove before go live)")
+    print("aepp.connector.AdobeRequest.getData patched")
 else:
     print("aepp.connector.AdobeRequest.getData already patched")
 

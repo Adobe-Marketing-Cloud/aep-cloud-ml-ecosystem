@@ -1,10 +1,7 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Scope of Notebook
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC
 # MAGIC The goal of this notebook is to showcase how you can use, in your own environment, a pre-trained model along with some profile data extracted from the Adobe Experience Platform to generate propensity scores and ingest those back to enrich the Unified Profile.
 # MAGIC
 # MAGIC ![Workflow](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week4-Workflow.png)
@@ -19,18 +16,12 @@
 
 # MAGIC %md
 # MAGIC # Setup
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Before we run anything, make sure to install the following required libraries for this notebook. They are all publicly available libraries and the latest version should work fine.
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC This notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
+# MAGIC
+# MAGIC As with the previous notebook, this notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
 # MAGIC
 # MAGIC The next cell will be looking for your configuration file under your **ADOBE_HOME** path to fetch the values used throughout this notebook. See more details in the Setup section of the **README** to understand how to create your configuration file.
+# MAGIC
+# MAGIC Some imports and utility functions that will be used throughout this notebook are provided in the [Common Include]($./CommonInclude) notebook since they'll also be used in all the other notebooks. Also, if you haven't already done so, please go run the [RunMe Notebook]($./RunMe) the create a cluster that has the required libraries installed.
 
 # COMMAND ----------
 
@@ -39,31 +30,7 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Some utility functions that will be used throughout this notebook:
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC We'll be using the [aepp Python library](https://github.com/pitchmuc/aepp) here to interact with AEP APIs and create a schema and dataset suitable for adding our synthetic data further down the line. This library simply provides a programmatic interface around the REST APIs, but all these steps could be completed similarly using the raw APIs directly or even in the UI. For more information on the underlying APIs please see [the API reference guide](https://developer.adobe.com/experience-platform-apis/).
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Before any calls can take place, we need to configure the library and setup authentication credentials. For this you'll need the following piece of information. For information about how you can get these, please refer to the `Setup` section of the **Readme**:
-# MAGIC - Client ID
-# MAGIC - Client secret
-# MAGIC - Private key
-# MAGIC - Technical account ID
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC The private key needs to be accessible on disk from this notebook. We recommend uploading it to DBFS and refering to it with the `/dbfs` prefix. This can be achieved by clicking in the Databricks notebook interface on `File > Upload data to DBFS` and then selecting the **private.key** file you downloaded during the setup, click `Next` and then you should have the option to copy the path. Make sure it starts with `/dbfs/FileStore` - for example if you uploaded your private key into `/FileStore/shared_upload/your_username` then the final path should be `/dbfs/FileStore/shared_uploads/your_username/private.key`. Make sure this value is properly set in the `private_key_path` variable of your configuration file.
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC # 1. Generating Propensity Scores Using the Trained Model
+# MAGIC # 1. Generating Propensity Scores
 
 # COMMAND ----------
 
@@ -261,6 +228,28 @@ display(df_to_ingest)
 # MAGIC At that point we have the scored profiles and exactly what we need to bring back into Adobe Experience Platform. But we're not quite ready to write the results yet, there's a bit of setup that needs to happen first:
 # MAGIC - We need to create and configure a destination **dataset** in Adobe Experience Platform where our data will end up.
 # MAGIC - We need to setup a **data flow** that will be able to take this data, convert it into an XDM format, and deliver it to this dataset.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ## 1.3 Inspect Lineage in Unity Catalog
+# MAGIC
+# MAGIC Since we registered our model in Unity Catalog, our team members will be able to find it
+# MAGIC and use it if they're granted access. They'll also be able to determine which tables were
+# MAGIC used to build the model and which notebooks were used to produce it, as shown in the
+# MAGIC screenshot below.
+# MAGIC
+# MAGIC ![Workflow](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week4-ModelLineageTable.png)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC By clicking on the `Lineage Graph` button, they can also view the chain 
+# MAGIC of dependencies for the model visually.
+# MAGIC
+# MAGIC ![Workflow](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week4-ModelLineageGraph.png)
 
 # COMMAND ----------
 

@@ -1,19 +1,6 @@
 # Databricks notebook source
-
-
-# COMMAND ----------
-
-# MAGIC %md 
-# MAGIC
-# MAGIC **Databricks Gated Public Preview**
-# MAGIC
-# MAGIC This feature is in Public Preview in the following regions: eu-west-1, us-east-1, us-east-2, us-west-2, ap-southeast-2.
-# MAGIC
-# MAGIC To sign up for access, [fill out this form](https://docs.google.com/forms/d/1wV5JxbFwyjxFJ9V4ZF4PinSxlIZCO0gtjInuHUNwSr8/viewform?edit_requested=true).
-
-# COMMAND ----------
-
 # MAGIC %md
+# MAGIC # Scope of Notebook
 # MAGIC
 # MAGIC The goal of this notebook is to showcase how you can set up, in your own environment,
 # MAGIC a [monitoring pipeline](https://docs.databricks.com/en/lakehouse-monitoring/index.html) 
@@ -29,12 +16,24 @@
 
 # COMMAND ----------
 
+# MAGIC %md 
+# MAGIC
+# MAGIC **Note: Databricks Gated Public Preview**
+# MAGIC
+# MAGIC This feature is in Public Preview in the following regions: eu-west-1, us-east-1, us-east-2, us-west-2, ap-southeast-2.
+# MAGIC
+# MAGIC To sign up for access, please [fill out this form](https://docs.google.com/forms/d/1wV5JxbFwyjxFJ9V4ZF4PinSxlIZCO0gtjInuHUNwSr8/viewform?edit_requested=true).
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC # Setup
 # MAGIC
-# MAGIC As with the previous notebooks, there are several configuration steps that
-# MAGIC need to be taken before we can proceed. These are all encapsulated in our 
-# MAGIC [Common Include]($./CommonInclude) notebook, so let's run that first.
+# MAGIC As with the previous notebook, this notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
+# MAGIC
+# MAGIC The next cell will be looking for your configuration file under your **ADOBE_HOME** path to fetch the values used throughout this notebook. See more details in the Setup section of the **README** to understand how to create your configuration file.
+# MAGIC
+# MAGIC Some imports and utility functions that will be used throughout this notebook are provided in the [Common Include]($./CommonInclude) notebook since they'll also be used in all the other notebooks. Also, if you haven't already done so, please go run the [RunMe Notebook]($./RunMe) the create a cluster that has the required libraries installed.
 
 # COMMAND ----------
 
@@ -48,7 +47,7 @@
 # MAGIC First, we need the propensity threshold we determined in the prior notebook. 
 # MAGIC The monitoring tools need predictions to evaluate model performance, rather than
 # MAGIC the probabilities we've been calling predictions up until this point. This should
-# MAGIC match the value we used to create our audience. We want the lower threshold. We didn't
+# MAGIC match the value we used to create our audience. We want the lower threshold here. We didn't
 # MAGIC include those above the upper threshold in the audience because it doesn't make since to
 # MAGIC target people who we already think are sure to convert. However, from a model perspective,
 # MAGIC those are still people who we think will subscribe.
@@ -78,8 +77,8 @@ display(prediction_df)
 # MAGIC which time we'd say whether the campaign was effective or not and let the state of the 
 # MAGIC subscriber at that time go from NULL to 0 or 1 as the case may be. Those would then be
 # MAGIC left joined into the monitor table, so that the predictions are revealed over time.
-# MAGIC Rather than attempt to simulate that here, we cheat a little bit and just join back in
-# MAGIC our original labels from the initial data generation notebook in week 1.
+# MAGIC Rather than attempt to simulate that here, we cheat a little bit and just joining back in
+# MAGIC our original labels from the initial data generation notebook.
 # MAGIC
 # MAGIC Note that for performance reasons, you'll want change data feed enabled on this and
 # MAGIC any other table you want to enable for monitoring.
@@ -122,11 +121,11 @@ display(monitored_df)
 
 # MAGIC %md
 # MAGIC
-# MAGIC # 3. Create the Monitor (incl. Tables and Dashboard)
+# MAGIC # 3. Create the Monitor (w/ Tables and Dashboard)
 # MAGIC
-# MAGIC Now we can create the monitor. This will create the background object which represents the overall
-# MAGIC monitoring object itself, along with the associated profile metrics and drift metrics tables. It
-# MAGIC also triggers generation of the DBSQL dashboard that helps us visualize the content of those two
+# MAGIC Now we can create the monitor, which will take care of creating the profile metrics 
+# MAGIC and drift metrics tables and keeping them updated for us. It also triggers creation
+# MAGIC of the DBSQL dashboard that helps us visualize the content of those two
 # MAGIC monitoring tables to better understand our model performance.
 # MAGIC
 # MAGIC You can find out more about this method and others in Databricks Lakehouse Monitoring 
@@ -197,7 +196,7 @@ assert(run_info.state == lm.RefreshState.SUCCESS)
 # MAGIC
 # MAGIC ![Workflow](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week6-DashboardTopScreenshot.png)
 # MAGIC
-# MAGIC Since we just created it, most of the time series oriented plots will just have a single point, if
+# MAGIC Since we just created it, most of the time series oriented plots will just have a single point. If
 # MAGIC we produce additional inferences over time and update the monitor then we'd see a shift.
 
 # COMMAND ----------

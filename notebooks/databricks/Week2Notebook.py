@@ -1,10 +1,7 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Scope of Notebook
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC
 # MAGIC The goal of this notebook is to showcase how you can prepare data for the future goal of consumption by an ML model, and leveraging functionality in the Adobe Experience Platform to generate features at scale and make it available in your choice of cloud storage.
 # MAGIC
 # MAGIC ![Workflow](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week2-Workflow.png)
@@ -19,29 +16,12 @@
 
 # MAGIC %md
 # MAGIC # Setup
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC This notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
+# MAGIC
+# MAGIC As with the previous notebook, this notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
 # MAGIC
 # MAGIC The next cell will be looking for your configuration file under your **ADOBE_HOME** path to fetch the values used throughout this notebook. See more details in the Setup section of the **README** to understand how to create your configuration file.
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Before we run anything, make sure to install the following required libraries for this notebook. They are all publicly available libraries and the latest version should work fine.
 # MAGIC
-# MAGIC <div class="alert alert-block alert-warning">
-# MAGIC <b>Note:</b> 
-# MAGIC     
-# MAGIC If you are not using `pip` to manage Python packages, or that you use a variation like `pip3`, please update the cell below accordingly to install these packages.
-# MAGIC </div>
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Some utility functions that will be used throughout this notebook:
+# MAGIC Some imports and utility functions that will be used throughout this notebook are provided in the [Common Include]($./CommonInclude) notebook since they'll also be used in all the other notebooks. Also, if you haven't already done so, please go run the [RunMe Notebook]($./RunMe) the create a cluster that has the required libraries installed.
 
 # COMMAND ----------
 
@@ -377,7 +357,7 @@ SELECT * FROM (SELECT history_meta('{table_name}'))
 
 df_meta = qs_cursor.query(query_meta, output="dataframe")
 print(f"Total number of snapshots/batches: {len(df_meta)}")
-display(df_meta.head(n=128) )
+display(df_meta.head(n=128))
 
 # COMMAND ----------
 
@@ -992,10 +972,6 @@ display_link(template_link, template_name)
 # MAGIC Now that the template is saved, we can refer to it at any time, and passing any kind of values for the snapshots that we want. So for example if you have streaming data coming through your system, you just need to find out the beginning snapshot ID and end snapshot ID, and you can execute this featurization query that will take care of querying between these 2 snapshots.
 # MAGIC
 # MAGIC In this example, we'll just query the entire dataset, so the very first and very last snapshots:
-
-# COMMAND ----------
-
-display(df_snapshots)
 
 # COMMAND ----------
 

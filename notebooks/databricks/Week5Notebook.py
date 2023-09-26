@@ -1,11 +1,8 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Scope of Notebook
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC The goal of this notebook is to use the propensity data that is now part of our profiles to create some segments for targeting high-value users, and to activate this audience to a 3rd party ad platform.
+# MAGIC
+# MAGIC The goal of this notebook is to use the propensity data that is now part of our profiles to create some segments for targeting high-value users, and to activate this audience to a 3rd party ad platform. 
 # MAGIC
 # MAGIC ![Workflow](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week5-Workflow.png)
 # MAGIC
@@ -18,20 +15,12 @@
 
 # MAGIC %md
 # MAGIC # Setup
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Before we run anything, make sure to install the following required libraries for this notebook. They are all publicly available libraries and the latest version should work fine.
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC This notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
 # MAGIC
-# MAGIC The next cell will be looking for your configuration file under your **ADOBE_HOME** path to fetch the values used throughout this notebook. See more details in the Setup section of the **README** to understand how to create your configuration file. 
+# MAGIC As with the previous notebook, this notebook requires some configuration data to properly authenticate to your Adobe Experience Platform instance. You should be able to find all the values required above by following the Setup section of the **README**.
 # MAGIC
-# MAGIC We'll reuse the same [Common Include]($./CommonInclude) we used for the other notebooks for this, as it also includes some additional utility functions and imports we'll need.
+# MAGIC The next cell will be looking for your configuration file under your **ADOBE_HOME** path to fetch the values used throughout this notebook. See more details in the Setup section of the **README** to understand how to create your configuration file.
+# MAGIC
+# MAGIC Some imports and utility functions that will be used throughout this notebook are provided in the [Common Include]($./CommonInclude) notebook since they'll also be used in all the other notebooks. Also, if you haven't already done so, please go run the [RunMe Notebook]($./RunMe) the create a cluster that has the required libraries installed.
 
 # COMMAND ----------
 
@@ -40,41 +29,16 @@
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC We'll be using the [aepp Python library](https://github.com/pitchmuc/aepp) here to interact with AEP APIs and create a schema and dataset suitable for adding our synthetic data further down the line. This library simply provides a programmatic interface around the REST APIs, but all these steps could be completed similarly using the raw APIs directly or even in the UI. For more information on the underlying APIs please see [the API reference guide](https://developer.adobe.com/experience-platform-apis/).
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Before any calls can take place, we need to configure the library and setup authentication credentials. For this you'll need the following piece of information. For information about how you can get these, please refer to the `Setup` section of the **Readme**:
-# MAGIC - Client ID
-# MAGIC - Client secret
-# MAGIC - Private key
-# MAGIC - Technical account ID
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC The private key needs to be accessible on disk from this notebook. We recommend uploading it to DBFS and refering to it with the `/dbfs` prefix. This can be achieved by clicking in the Databricks notebook interface on `File > Upload data to DBFS` and then selecting the **private.key** file you downloaded during the setup, click `Next` and then you should have the option to copy the path. Make sure it starts with `/dbfs/FileStore` - for example if you uploaded your private key into `/FileStore/shared_upload/your_username` then the final path should be `/dbfs/FileStore/shared_uploads/your_username/private.key`. Make sure this value is properly set in the `private_key_path` variable of your configuration file.
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC # 1. Creating a Segment to Target Users based on Propensities
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC
 # MAGIC Because the propensity data is already in the Unified Profile, we can now create a segment to target people based on propensities. But it's not immediately obvious what a good value for the upper and lower bound of our target audience should be, so we need to look at the scoring data a bit to understand it better.
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 1.1 Reading the scored data
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC To that end we need to read the output of the scoring data that we wrote to the Data Landing Zone previously. We use the regular container `dlz-user-container` since this is where we dropped off the data previously.
+# MAGIC
+# MAGIC To that end we need to read the output of the scoring data that we wrote to the Data Landing Zone previously. We use the regular container `dlz-user-container`, since this is where we wrote the data.
 
 # COMMAND ----------
 
@@ -87,21 +51,12 @@ dlz_container = dlz_credentials["containerName"]
 dlz_sas_token = dlz_credentials["SASToken"]
 dlz_storage_account = dlz_credentials["storageAccountName"]
 dlz_sas_uri = dlz_credentials["SASUri"]
-print(dlz_container)
-
-# COMMAND ----------
-
-from adlfs import AzureBlobFileSystem
-from fsspec import AbstractFileSystem
-
-azure_blob_fs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
-export_time = get_export_time(azure_blob_fs, dlz_container, import_path, scoring_dataset_id)
-print(f"Using featurized data export time of {export_time}")
+print(f"Reading from container {dlz_container}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC At that point we're ready to read this data. We're using Spark since it could be pretty large as we're not doing any sampling. Spark needs the following properties to be able to authenticate using SAS:
+# MAGIC At that point we're ready to read the data. We're using Spark since it could be pretty large as we're not doing any sampling. Spark needs the following properties to be able to authenticate using SAS:
 # MAGIC - `fs.azure.account.auth.type.$ACCOUNT.dfs.core.windows.net` should be set to `SAS`.
 # MAGIC - `fs.azure.sas.token.provider.type.$ACCOUNT.dfs.core.windows.net` should be set to `org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider`.
 # MAGIC - `fs.azure.sas.fixed.token.$ACCOUNT.dfs.core.windows.net` should be set to the SAS token retrieved earlier.
@@ -110,26 +65,40 @@ print(f"Using featurized data export time of {export_time}")
 
 # COMMAND ----------
 
-spark.conf.set(f"fs.azure.account.auth.type.{dlz_storage_account}.dfs.core.windows.net", "SAS")
-spark.conf.set(f"fs.azure.sas.token.provider.type.{dlz_storage_account}.dfs.core.windows.net", "org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider")
-spark.conf.set(f"fs.azure.sas.fixed.token.{dlz_storage_account}.dfs.core.windows.net", dlz_sas_token)
+from adlfs import AzureBlobFileSystem
+from fsspec import AbstractFileSystem
 
-protocol = "abfss"
-input_path = f"{protocol}://{dlz_container}@{dlz_storage_account}.dfs.core.windows.net/{import_path}/{scoring_dataset_id}/exportTime={export_time}/"
+def read_remote_scores():
+    azure_blob_fs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
+    export_time = get_export_time(azure_blob_fs, dlz_container, import_path, scoring_dataset_id)
+    print(f"Using featurized data export time of {export_time}")
 
-remote_scoring_df = spark.read.format("csv").option("header", "true").load(input_path)
-remote_scoring_df.printSchema()
+    spark.conf.set(f"fs.azure.account.auth.type.{dlz_storage_account}.dfs.core.windows.net", "SAS")
+    spark.conf.set(f"fs.azure.sas.token.provider.type.{dlz_storage_account}.dfs.core.windows.net", "org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider")
+    spark.conf.set(f"fs.azure.sas.fixed.token.{dlz_storage_account}.dfs.core.windows.net", dlz_sas_token)
+
+    protocol = "abfss"
+    input_path = f"{protocol}://{dlz_container}@{dlz_storage_account}.dfs.core.windows.net/{import_path}/{scoring_dataset_id}/exportTime={export_time}/"
+
+    remote_scoring_df = (
+        spark.read.format("csv")
+        .option("header", "true")
+        .option("inferSchema", "true")
+        .load(input_path))
+    
+    return remote_scoring_df
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Before we start working with it, let's go ahead and ingest it as a Delta table and use that as the basis for our subsequent analysis. We'd only need to do this process once.
+# MAGIC Before we start working with it, let's ingest it as a Delta table and use that as the basis for our subsequent analysis. We'd only need to do this process once.
 
 # COMMAND ----------
 
 scoring_table_name = "week5_scoring_input"
 
 if not spark.catalog.tableExists(scoring_table_name):
+    remote_scoring_df = read_remote_scores()
     remote_scoring_df.write.saveAsTable(scoring_table_name)
 
 df = spark.table(scoring_table_name)
@@ -156,11 +125,99 @@ display(df)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1.2 Figuring out the right threshold via a propensity-reach graph
+# MAGIC
+# MAGIC ## 1.2 Extra synthetic data visualizations
+# MAGIC
+# MAGIC Let's take a moment here to also think about how we can go about joining prediction output 
+# MAGIC from AEP with data we may have available to us outside of AEP. We created some extra synthetic data
+# MAGIC to go along with the main in our Week3 Notebook. For instance, let's do a few examples to understand 
+# MAGIC if there are any correlations between highly likely subscribers and the other features associated 
+# MAGIC with these profiles.
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+from pyspark.sql import functions as F
+
+# Read in extra synthetic data table
+extra_synth_data = spark.table("extra_synthetic_data")
+
+# Read in propensity features table
+propensity_features = spark.table("user_propensity_features")
+
+# Join predictions from AEP to local features and other data outside of AEP
+extra_synth_df = (
+    df
+    .join(spark.table("extra_synthetic_data"), "userId")
+    .join(spark.table("user_propensity_features"), "userId"))
+
+display(extra_synth_df)
 
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC To further demonstrate the idea of combining these datasets, let's create a heatmap to 
+# MAGIC investigate some of the relationships in the data.
+
+# COMMAND ----------
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Here, we'll demonstrate processing this visualization using Pandas
+full_df = extra_synth_df.toPandas()
+
+# Group by 'DeviceType' and calculate the mean of 'Predicted Subscription status'
+grouped_data = full_df.groupby(['eventType', 'devicePlatform'], as_index=False).agg({'prediction': 'mean'})
+
+# Create a DataFrame suitable for a heatmap
+heatmap_data = grouped_data.pivot('eventType', 'devicePlatform', 'prediction')
+
+# Create the heatmap
+plt.figure(figsize=(10, 8))
+sns.heatmap(heatmap_data, annot=True, cmap='Blues', fmt=".2f", linewidths=.5, cbar_kws={'label': 'Avg Likeliness to Subscribe'})
+
+plt.title('Likeiness to Subscribe Based on Device Type Used for Digital Interactions')
+plt.xlabel('Device Type')
+plt.ylabel('Interaction Type');
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC We can also look at how subscription likeliness varies across states if we wanted to consider geo-targetting in the future. Based off the visual below you can see VT and SC have the highest cocnentration of likeliness to subscribe.
+
+# COMMAND ----------
+
+fig = go.Figure(data=go.Choropleth(
+    locations = grouped_by_state['state'],
+    z = grouped_by_state['prediction'],
+    locationmode = 'USA-states', 
+    colorscale = 'Blues',
+    colorbar_title = 'Likeliness to Subscribe'
+)) 
+
+fig.update_layout(
+    title = 'Likeliness to Subscribe Prediction by State',
+    geo_scope = 'usa'
+)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC There are a variety of different data sources you can bring to the table by taking
+# MAGIC advantage of the combined capabilities of AEP and Databricks in this way. This 
+# MAGIC particular example just scratches the surface of what's possible to hopefully
+# MAGIC inspire your own combinations of datasets to amplify your AI powered marketing
+# MAGIC campaigns. Now, let's move on to take a look at how to analyze the predictions to
+# MAGIC choose thresholds for our advertising segments.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 1.3 Figuring out the right threshold via a propensity-reach graph
+# MAGIC
 # MAGIC In order to determine a suitable interval of propensities for targeting, we need to understand the distribution of the propensity scores across all our profiles.  There's a few different ways we can digest that information, but the very first step is to create a histogram with N bins. Because we may have scored a lot of profiles we do this computation via Spark's `histogram_numeric` function to make sure it is distributed.
 
 # COMMAND ----------
@@ -195,8 +252,8 @@ df_graph.plot(x="propensity_bucket", y="reach", title="Number of profiles at a p
 
 # MAGIC %md
 # MAGIC This is still not quite what we want, because typically we'll want to target profiles who have a propensity either above or below a particular threshold. We can get that by computing the **cumulative sum** using two different methods:
-# MAGIC - If we do the cumulative sum from the **smallest bucket to the largest bucket** ("left to right"), then any point in the resulting graph shows us the reach if I was to target all profiles with a propensity **below** a particular threshold.
-# MAGIC - If we do the cumulative sum from the **largest bucket to the smallest bucket** ("right to left"), then any point in the resulting graph shows us the reach if I was to target all profiles with a propensity **above** a particular threshold.
+# MAGIC - If we do the cumulative sum from the **smallest bucket to the largest bucket** ("left to right"), then any point in the resulting graph shows us the reach if we target all profiles with a propensity **below** a particular threshold.
+# MAGIC - If we do the cumulative sum from the **largest bucket to the smallest bucket** ("right to left"), then any point in the resulting graph shows us the reach if we target all profiles with a propensity **above** a particular threshold.
 
 # COMMAND ----------
 
@@ -210,20 +267,22 @@ display(df_graph)
 
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(1, 2, figsize=(12, 4))
-df_graph.plot(x="propensity_bucket", y="reach_superior_or_equal", title="Reach above a propensity", ax=ax[0])
-df_graph.plot(x="propensity_bucket", y="reach_inferior_or_equal", title="Reach below a propensity", ax=ax[1]);
+df_graph.plot(x="propensity_bucket", y="reach_superior_or_equal", 
+              title="Reach above a propensity", ax=ax[0])
+df_graph.plot(x="propensity_bucket", y="reach_inferior_or_equal", 
+              title="Reach below a propensity", ax=ax[1]);
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC These graphs are useful to help us define broad propensity-based segments where we only look at profiles with a propensity above or below a threshold, but that's still not enough to help us define a complete interval for our segment.
+# MAGIC These graphs are useful to help us define broad propensity-based segments where we only look at profiles with a propensity above or below a threshold. However, that's still not enough to help us define a complete interval for our segment.
 # MAGIC
-# MAGIC For that we would ideally like to represent this as a 3-dimensional plot where:
+# MAGIC For that, we would ideally like to represent this as a 3-dimensional plot where:
 # MAGIC - On the **X axis** we have the **lower bound** of the interval.
 # MAGIC - On the **Y axis** we have the **upper bound** of the interval.
 # MAGIC - On the **Z axis** you have the **reach** corresponding to that interval.
 # MAGIC
-# MAGIC To get there the first step is to create a function that can tell us the reach given a lower and upper bound:
+# MAGIC To get there, the first step is to create a function that can tell us the reach given a lower and upper bound:
 
 # COMMAND ----------
 
@@ -326,20 +385,14 @@ fig.show()
 
 # MAGIC %md
 # MAGIC # 2. Targeting via a Propensity Segment
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC
 # MAGIC Now that we know the characteristics of the audience we want to target, the next and final step is to turn this into an actual audience, make sure it is populated, and activate it.
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 2.1 Creating a Propensity Segment
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC
 # MAGIC We've identified the upper and lower bound of interest in the previous 3-dimensional plot, so at that point we can copy/paste the corresponding segment rule and plug it into the cell below, so we can use this as the basis for our segment:
 
 # COMMAND ----------
@@ -386,7 +439,9 @@ display_link(segment_link, segment_spec["name"])
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC At that point the segment has been created, but it does not mean it will get populated in realtime. If you've clicked in the UI on `Add all segments to schedule` it should be evaluated and populated eventually (up to 24 hours), but if you do not want to wait for that you can trigger a segmentation job on-demand just for this segment:
+# MAGIC At this point the segment has been created, but it does not mean it will get populated in realtime. If you've clicked in the UI on `Add all segments to schedule` it should be evaluated and populated eventually (up to 24 hours). 
+# MAGIC
+# MAGIC If you do not want to wait for that you can trigger a segmentation job on-demand just for this segment:
 
 # COMMAND ----------
 
@@ -410,9 +465,7 @@ while not finished:
     if job_status in ["SUCCEEDED", "FAILED"]:
         total_time = job_info["metrics"]["totalTime"]["totalTimeInMs"] / 1000
         qualified_profiles = job_info["metrics"]["segmentedProfileCounter"][segment_id]
-        print(
-            f"Segmentation job completed in {total_time} secs with {qualified_profiles} profiles"
-        )
+        print(f"Segmentation job completed in {total_time} secs with {qualified_profiles} profiles")
         break
     print(f"Job not yet finished, status is {job_status}")
     time.sleep(60)
@@ -436,10 +489,7 @@ display_link(segment_link, f"Segment ID {segment_id}")
 
 # MAGIC %md
 # MAGIC ## 2.2 Activating the Segment
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Now we're ready to activate the segment and the profiles associated to it to a destination. For that step this is more easily done through the UI, and you can follow [this guide](https://experienceleague.adobe.com/docs/experience-platform/destinations/ui/activate/activate-batch-profile-destinations.html?lang=en) to go through the different steps needed for activation.
+# MAGIC
+# MAGIC Now we're ready to activate the segment and the profiles associated to it to a destination. This step is more easily accomplished via the UI, and you can follow [this guide](https://experienceleague.adobe.com/docs/experience-platform/destinations/ui/activate/activate-batch-profile-destinations.html?lang=en) to go through the different steps needed for activation.
 # MAGIC
 # MAGIC You will need to choose a destination for it. You can use any pre-defined destination that you might already have setup, or if you need a dummy destination you can again use the Data Landing Zone to simply use it for validation purposes.
