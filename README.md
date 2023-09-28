@@ -190,6 +190,7 @@ Not yet supported.
 A custom notebook has been built that shows Sagemaker support.  The central idea behind this support is to showcase how data gets brought in from the dlz into the sagemaker studio environment.
 
 #### 4.1 Sagemaker studio environment requirements
+- Select Data Science 3.0 image, Python3.10+ kernel, ml.m5.large instance type
 - A custom jars subdirectory with the image below delineating the jars needed to be installed
 ![jarsNeeded.png](img/jars-needed.png)
 - A conf directory with a config.ini with the appropriate parameters for all of the authentication and the featurized dataset id
