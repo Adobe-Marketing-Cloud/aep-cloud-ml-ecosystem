@@ -1,6 +1,6 @@
-# Adobe Experience Platform - Cloud ML Ecosystem (CMLE)
+# Adobe Experience Platform - ML Data Pipelines
 
-This repository provides sample notebooks that demonstrate an end-to-end workflow for using customer data from the Adobe Experience Platform (AEP) with cloud-based machine learning tools. The notebooks serve as a template to help data science teams take advantage of their organization's AEP data and services within their modeling workflow to develop custom models to support their organization's marketing and experience activities.
+This repository provides sample notebooks that demonstrate an end-to-end pipeline for using customer data from the Adobe Experience Platform (AEP) with external machine learning tools. The notebooks serve as a template to help data science teams take advantage of their organization's AEP data and services within their modeling workflow to develop custom models to support their organization's marketing and experience activities.
 
 README contents:
 - [Intended use](#intended-use)
