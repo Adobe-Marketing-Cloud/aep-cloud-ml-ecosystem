@@ -25,24 +25,23 @@ Please refer to the `Environment` part of the table above to determine the setup
 There is a common [configuration file](./conf/config.ini) used by all the notebooks.
 For the setup you can refer to the following section, but here are the different configuration options you should use:
 
-Config Property | Section | Description                                                                   | Value                                                                                           | Needed for
-----------------|---------|-------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|------------
-ims_org_id | Platform | The organization ID                                                           | See section below on **Org-level Information**                                                  | Weeks 1 through 5
-sandbox_name | Platform | The ID of the sandbox to use                                                  | See section below on **Org-level Information**                                                  | Weeks 1 through 5
-dataset_id | Platform | The ID of the dataset containing the synthetic data                           | Dataset ID created as part of [Week1Notebook.ipynb](notebooks/assignments/Week1Notebook.ipynb)  | Week 2
-featurized_dataset_id | Platform | The ID of the dataset containing the featurized data                          | Dataset ID created as part of [Week2Notebook.ipynb](notebooks/assignments/Week2Notebook.ipynb)  | Weeks 3 & 4
-dataflow_id | Platform | The ID of the dataflow where the featurized dataset will be exported          | Dataflow ID created as part of [Week2Notebook.ipynb](notebooks/assignments/Week2Notebook.ipynb) | Week 2
-scoring_dataset_id | Platform | The ID of the dataset containing the scoring output                           | Dataset ID created as part of [Week4Notebook.ipynb](notebooks/assignments/Week4Notebook.ipynb)  | Week 5
-environment | Platform | The type of environment this organization is running under                    | **prod** if running in production, **stage** otherwise                                          | Weeks 1 through 5
-client_id | Authentication | The client ID used for API calls                                              | See section below on **Authentication Information**                                             | Weeks 1 through 5
-client_secret | Authentication | The client secret used for API calls                                          | See section below on **Authentication Information**                                             | Weeks 1 through 5
-private_key_path | Authentication | The path to the private key for your JWT token                                | See section below on **Authentication Information**                                             | Weeks 1 through 5
-tech_acct_id | Authentication | The technical account ID used for API calls                                   | See section below on **Authentication Information**                                             | Weeks 1 through 5
-export_path | Cloud | The path in your Cloud Storage account where featurized data will be exported | Default to `cmle/egress`                                                                        | Weeks 2, 3 & 4
-import_path | Cloud | The path in your Cloud Storage account where scoring results will be written  | Default to `cmle/ingress`                                                                       | Weeks 4 & 5
-data_format | Cloud | The format of the files for the featurized data                               | Default to `parquet`                                                                            | Weeks 2, 3 & 4
-compression_type | Cloud | The type of compression for the featurized data                               | Default to `gzip`                                                                               | Weeks 2, 3 & 4
-model_name | Cloud | The name of the model                                                         | Default to `cmle_propensity_model`                                                              | Weeks 3 & 4
+Config Property | Section | Description                                                | Value | Needed for
+----------------|---------|------------------------------------------------------------|-------|------------
+ims_org_id | Platform | The organization ID                                        | See section below on **Org-level Information** | Weeks 1 through 5
+sandbox_name | Platform | The ID of the sandbox to use                               | See section below on **Org-level Information** | Weeks 1 through 5
+dataset_id | Platform | The ID of the dataset containing the synthetic data        | Dataset ID created as part of [Week1Notebook.ipynb](notebooks/assignments/Week1Notebook.ipynb) | Week 2
+featurized_dataset_id | Platform | The ID of the dataset containing the featurized data       | Dataset ID created as part of [Week2Notebook.ipynb](notebooks/assignments/Week2Notebook.ipynb) | Weeks 3 & 4
+scoring_dataset_id | Platform | The ID of the dataset containing the scoring output        | Dataset ID created as part of [Week4Notebook.ipynb](notebooks/assignments/Week4Notebook.ipynb) | Week 5
+environment | Platform | The type of environment this organization is running under | **prod** if running in production, **stage** otherwise | Weeks 1 through 5
+client_id | Authentication | The client ID used for API calls                           | See section below on **Authentication Information** | Weeks 1 through 5
+client_secret | Authentication | The client secret used for API calls                       | See section below on **Authentication Information** | Weeks 1 through 5
+private_key_path | Authentication | The path to the private key for your JWT token             | See section below on **Authentication Information** | Weeks 1 through 5
+tech_acct_id | Authentication | The technical account ID used for API calls | See section below on **Authentication Information** | Weeks 1 through 5
+export_path | Cloud | The path in your Cloud Storage account where featurized data will be exported | Default to `cmle/egress` | Weeks 2, 3 & 4
+import_path | Cloud | The path in your Cloud Storage account where scoring results will be written | Default to `cmle/ingress` | Weeks 4 & 5
+data_format | Cloud | The format of the files for the featurized data | Default to `parquet` | Weeks 2, 3 & 4
+compression_type | Cloud | The type of compression for the featurized data | Default to `gzip` | Weeks 2, 3 & 4
+model_name | Cloud | The name of the model | Default to `cmle_propensity_model` | Weeks 3 & 4
 
 We assume familiarity with the [connectivity to Adobe Experience Platform APIs](https://experienceleague.adobe.com/docs/experience-platform/landing/platform-apis/api-guide.html?lang=en), but for brevity the key setup points are listed below.
 
@@ -192,6 +191,8 @@ A custom notebook has been built that shows Sagemaker support.  The central idea
 
 #### 4.1 Sagemaker studio environment requirements
 - Select Data Science 3.0 image, Python3.10+ kernel, ml.m5.large instance type
+- Create a folder called jars under the root directory
+  ![jarsFolders.png](img/jars-folders.png)
 - A custom jars subdirectory with the image below delineating the jars needed to be installed
 ![jarsNeeded.png](img/jars-needed.png)
 - A conf directory with a config.ini with the appropriate parameters for all of the authentication and the featurized dataset id
