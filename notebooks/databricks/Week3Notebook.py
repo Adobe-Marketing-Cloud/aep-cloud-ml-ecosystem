@@ -43,26 +43,6 @@
 
 # COMMAND ----------
 
-from aepp import connector
-
-connector = connector.AdobeRequest(
-    config_object=aepp.config.config_object,
-    header=aepp.config.header,
-    loggingEnabled=False,
-    logger=None)
-
-dlz_endpoint = (
-    aepp.config.endpoints["global"]
-    + "/data/foundation/connectors/landingzone/credentials")
-
-dlz_credentials = connector.getData(endpoint=dlz_endpoint, params={"type": "dlz_destination"})
-dlz_container = dlz_credentials["containerName"]
-dlz_sas_token = dlz_credentials["SASToken"]
-dlz_storage_account = dlz_credentials["storageAccountName"]
-dlz_sas_uri = dlz_credentials["SASUri"]
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC Now we use some Python libraries to authenticate and issue listing commands so we can get the paths and extract the time from it.
 

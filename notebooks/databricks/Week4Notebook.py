@@ -36,46 +36,11 @@
 
 # MAGIC %md
 # MAGIC ## 1.1 Reading the Featurized Data from the Data Landing Zone
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC
 # MAGIC In the second weekly assignment we had written our featurized data into the Data Landing Zone, and then on the third assignment we just read a sampled portion of it for training our model. At that point we want to score all of the profiles, so we need to read everything.
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC The featurized data exported into the Data Landing Zone is under the format **cmle/egress/$DATASETID/exportTime=$EXPORTTIME**. We know the dataset ID which is in your config under `featurized_dataset_id` so we're just missing the export time so we know what to read. To get that we can simply list files in the DLZ and find what the value is. The first step is to retrieve the credentials for the DLZ related to the destination container:
-
-# COMMAND ----------
-
-import aepp
-
-from aepp import connector
-
-connector = connector.AdobeRequest(
-    config_object=aepp.config.config_object,
-    header=aepp.config.header,
-    loggingEnabled=False,
-    logger=None,
-)
-
-landing_zone_endpoint = (
-    aepp.config.endpoints["global"]
-    + "/data/foundation/connectors/landingzone/credentials"
-)
-
-dlz_credentials = connector.getData(
-    endpoint=landing_zone_endpoint, params={"type": "dlz_destination"}
-)
-dlz_container = dlz_credentials["containerName"]
-dlz_sas_token = dlz_credentials["SASToken"]
-dlz_storage_account = dlz_credentials["storageAccountName"]
-dlz_sas_uri = dlz_credentials["SASUri"]
-
-# COMMAND ----------
-
-# MAGIC %md
+# MAGIC
+# MAGIC The featurized data exported into the Data Landing Zone is under the format **cmle/egress/$DATASETID/exportTime=$EXPORTTIME**. We know the dataset ID which is in your config under `featurized_dataset_id` so we're just missing the export time so we know what to read. To get that we can simply list files in the DLZ and find what the value is.
+# MAGIC
 # MAGIC Now we use some Python libraries to authenticate and issue listing commands so we can get the paths and extract the time from it.
 
 # COMMAND ----------
@@ -679,30 +644,26 @@ spark.read.format("csv").option("header", "true").load(output_path).count()
 
 # COMMAND ----------
 
-flow_conn.getRuns(prop=f"flowId=={dataflow_id}")
-
-# COMMAND ----------
-
 import time
 
 # TODO: handle that more gracefully in aepp
 finished = False
 while not finished:
-  try:
-      runs = flow_conn.getRuns(prop=f"flowId=={dataflow_id}")
-      for run in runs:
-          run_id = run["id"]
-          run_started_at = run["metrics"]["durationSummary"]["startedAtUTC"]
-          run_ended_at = run["metrics"]["durationSummary"]["completedAtUTC"]
-          run_duration_secs = (run_ended_at - run_started_at) / 1000
-          run_size_mb = run["metrics"]["sizeSummary"]["outputBytes"] / 1024. / 1024.
-          run_num_rows = run["metrics"]["recordSummary"]["outputRecordCount"]
-          run_num_files = run["metrics"]["fileSummary"]["outputFileCount"]
-          print(f"Run ID {run_id} completed with: duration={run_duration_secs} secs; size={run_size_mb} MB; num_rows={run_num_rows}; num_files={run_num_files}")
-      finished = True
-  except Exception as e:
-      print(f"No runs completed yet for flow {dataflow_id}")
-      time.sleep(60)
+    try:
+        runs = flow_conn.getRuns(prop=f"flowId=={dataflow_id}")
+        for run in runs:
+            run_id = run["id"]
+            run_started_at = run["metrics"]["durationSummary"]["startedAtUTC"]
+            run_ended_at = run["metrics"]["durationSummary"]["completedAtUTC"]
+            run_duration_secs = (run_ended_at - run_started_at) / 1000
+            run_size_mb = run["metrics"]["sizeSummary"]["outputBytes"] / 1024.0 / 1024.0
+            run_num_rows = run["metrics"]["recordSummary"]["outputRecordCount"]
+            run_num_files = run["metrics"]["fileSummary"]["outputFileCount"]
+            print(f"Run ID {run_id} completed with: duration={run_duration_secs} secs; size={run_size_mb} MB; num_rows={run_num_rows}; num_files={run_num_files}")
+        finished = True
+    except Exception as e:
+        print(f"No runs completed yet for flow {dataflow_id}")
+        time.sleep(60)
 
 # COMMAND ----------
 

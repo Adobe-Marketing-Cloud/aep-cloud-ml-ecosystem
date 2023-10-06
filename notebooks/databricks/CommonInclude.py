@@ -220,6 +220,24 @@ def get_export_time(fs: AbstractFileSystem, container_name: str, base_path: str,
 
 # COMMAND ----------
 
+connector = aepp.connector.AdobeRequest(
+    config_object=aepp.config.config_object,
+    header=aepp.config.header,
+    loggingEnabled=False,
+    logger=None)
+
+dlz_endpoint = (
+    aepp.config.endpoints["global"]
+    + "/data/foundation/connectors/landingzone/credentials")
+
+dlz_credentials = connector.getData(endpoint=dlz_endpoint, params={"type": "dlz_destination"})
+dlz_container = dlz_credentials["containerName"]
+dlz_sas_token = dlz_credentials["SASToken"]
+dlz_storage_account = dlz_credentials["storageAccountName"]
+dlz_sas_uri = dlz_credentials["SASUri"]
+
+# COMMAND ----------
+
 catalog_name = unique_id
 database_name = "aep_cloud_ml_ecosystem"
 

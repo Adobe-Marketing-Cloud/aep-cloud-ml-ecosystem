@@ -46,6 +46,7 @@ from aepp import flowservice
 
 flow_conn = flowservice.FlowService()
 
+# Note that this overrides the general DLZ destination container defined in CommonInclude.
 dlz_credentials = flow_conn.getLandingZoneCredential()
 dlz_container = dlz_credentials["containerName"]
 dlz_sas_token = dlz_credentials["SASToken"]
@@ -185,9 +186,13 @@ plt.ylabel('Interaction Type');
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC We can also look at how subscription likeliness varies across states if we wanted to consider geo-targetting in the future. Based off the visual below you can see VT and SC have the highest cocnentration of likeliness to subscribe.
+# MAGIC We can also look at how subscription likeliness varies across states if we wanted to consider geo-targetting in the future. Based off the visual below you can see VT and SC have the highest concentration of likeliness to subscribe.
 
 # COMMAND ----------
+
+import plotly.graph_objects as go
+
+grouped_by_state = full_df.groupby(['state'], as_index=False).agg({'prediction': 'mean'})
 
 fig = go.Figure(data=go.Choropleth(
     locations = grouped_by_state['state'],
