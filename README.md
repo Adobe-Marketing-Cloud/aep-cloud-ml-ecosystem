@@ -193,3 +193,16 @@ A custom notebook has been built that shows Sagemaker support.  The central idea
 ![jarsNeeded.png](img/jars-needed.png)
 - A conf directory with a config.ini with the appropriate parameters for all of the authentication and the featurized dataset id
 - The file private.key needs to be uploaded to the root directory of the sagemaker studio environment
+
+### 5. DataRobot setup
+
+The DataRobot implementation allows you to leverage the DataRobot Development and MLOps capabilities to train models, deplopy them and write predictions into the AEP environment.
+
+A demo of the workflow can be found here: https://www.dropbox.com/scl/fi/apdzy8eoizrhm64n006hz/DR-DEMO.mp4?rlkey=bqf5vtx9n3m1cv6hebnwxe1uk&dl=0
+
+To config add the DataRobot token and API-endpoint fields under the DataRobot section. If you have not created one, please refer to the following guide: https://docs.datarobot.com/en/docs/api/api-quickstart/index.html#create-a-datarobot-api-key
+
+For any questions, please reach out to support@datarobot.com
+
+
+
