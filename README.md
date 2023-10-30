@@ -56,7 +56,8 @@ You may already have this information, in which case you can skip to the next se
 ![UI Data Debugger](img/ui-data-debugger.png)
 
 For the sandbox name, you can get it one of 2 ways:
-- If you do not have admin access to your Adobe Experience Platform instance, a human-readable version of it can be found in the top-right corner. Be aware though it should be all lowercase and not contain any spaces so if you are unsure you can ask your instance admin to verify.
+- If you do not have admin access to your Adobe Experience Platform instance, you can find it in the url within the section starts with sname.In the example below, the sandbox name is `cmle`. Be aware though it should be all lowercase and not contain any spaces so if you are unsure you can ask your instance admin to verify.
+![URL_Sandbox_Name](img/url-sandbox-name.png)
 - If you have admin access, you can navigate to the `Sandboxes` panel to the left, click on `Browse` and note the **name** value of the instance you want to use.
 
 ![UI Sandboxes](img/ui-sandboxes.png)
@@ -187,13 +188,6 @@ Not yet supported.
 
 ### 4. SageMaker setup
 
-A custom notebook has been built that shows Sagemaker support.  The central idea behind this support is to showcase how data gets brought in from the dlz into the sagemaker studio environment.
-
-#### 4.1 Sagemaker studio environment requirements
-- Select Data Science 3.0 image, Python3.10+ kernel, ml.m5.large instance type
-- Create a folder called jars under the root directory
-  ![jarsFolders.png](img/jars-folders.png)
-- A custom jars subdirectory with the image below delineating the jars needed to be installed
-![jarsNeeded.png](img/jars-needed.png)
-- A conf directory with a config.ini with the appropriate parameters for all of the authentication and the featurized dataset id
-- The file private.key needs to be uploaded to the root directory of the sagemaker studio environment
+5 custom notebooks have been built that show Sagemaker support. 
+Once you have completed the steps above including Configuration File, Org-level Information and Authentication Information. 
+Please find the customized notebooks in notebooks/aws_sagemaker and follow the SageMaker specific [README](notebooks/aws_sagemaker/README.md)
