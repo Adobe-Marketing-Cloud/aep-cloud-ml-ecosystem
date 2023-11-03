@@ -113,6 +113,10 @@ Make sure to note down the public key displayed on this screen as well, then cli
 
 ![Console API Profile Screen](img/console-api-profile.png)
 
+Make sure your api credential is assigned with Role(s) that contains all necessary permissions from Adobe Experience Platform UI under the tab Administration -> Permissions -> Roles -> API credentials. Please provide your credential info with your org administrator if you can't see the tab yourself.
+![API Credential With Role](img/ui-api-credentials.png)
+
+
 Now your setup is complete, and you will be taken to the summary page for your API connection. You can verify that everything looks correct and scroll down to see a few fields:
 
 ![Console API Summary 1](img/console-api-summary-1.png)
