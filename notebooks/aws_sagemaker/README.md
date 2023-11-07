@@ -43,8 +43,6 @@ Note: The CDK project provisions resources needed to complete the CMLE notebooks
 
 Perform these steps on your local machine/laptop. 
 
-(**NOTE TO TESTERS: Firstly thanks for helping out! If you run into any broken or incorrect links, please let @andymui know. Thanks!**)
-
 1. Clone the [AEP CMLE repo](https://github.com/Adobe-Marketing-Cloud/aep-cloud-ml-ecosystem/tree/main) to a desired location.
 
 ```
@@ -191,8 +189,6 @@ git clone git@github.com:Adobe-Marketing-Cloud/aep-cloud-ml-ecosystem.git
 
 ![Notebook config.ini file with AWS properties configured](images/00_2_config_ini.png)
 
-(**INTERNAL TESTERS, SKIP THE FOLLOWING STEPS 5 & 6**)
-
 5. Now that the configuration has been set, install script dependencies and run the validation script from the System terminal to check the S3 bucket, S3 prefix, and credentials are working as expected. 
 
     a. Using the System terminal, **navigate** to `aep-cloud-ml-ecosystem-main/notebooks/aws_sagemaker/utils`
@@ -205,7 +201,7 @@ git clone git@github.com:Adobe-Marketing-Cloud/aep-cloud-ml-ecosystem.git
 
     a. Using the file explorer, **navigate** to `aep-cloud-ml-ecosystem-main/notebooks/aws_sagemaker`
 
-    b. **Double-click** on **Week1Notebook_sagemaker.ipynb** to open in the editor
+    b. **Double-click** on **Notebook1_sagemaker.ipynb** to open in the editor
 
     c. When prompted to “Set up notebook environment“, select the following options from the dropdowns - 
 
@@ -217,13 +213,24 @@ git clone git@github.com:Adobe-Marketing-Cloud/aep-cloud-ml-ecosystem.git
 
 When finished running through all CMLE notebooks, follow these steps to tear down provisioned AWS resources.
 
-1. Tear down the CDK stack 
+CDK/CloudFormation in most cases will not delete resources if it holds data or has a dependency. The cleanup script aims to help with this, but some service managed resources may remain. When this happens, the best option is to manually delete the resource and subsequently the stack.
+
+1. Run cleanup script
+
+    a. Open a system terminal, navigate to `aep-cloud-ml-ecosystem-main/notebooks/aws_sagemaker/utils`
+
+    b. **Run** command: `python3 cleanup.py`
+
+2. Tear down the CDK stack 
   
     a. **Navigate** to `aep-cloud-ml-ecosystem-main/notebooks/aws_sagemaker/infra` where `cdk.json` lives
 
-    b. **Destroy** the stack
+    b. **Run** command: `cdk destroy`
 
-```
-cdk destroy
-```
+3. If the `cdk destroy` command fails to delete the stack, delete the stack manually from the CloudFormation console.
 
+    a. **Navigate** to the [CloudFormation](https://console.aws.amazon.com/cloudformation/home) console, and **click** on the `InfraStack` that failed to delete
+    
+    b. **Inspect** both the `Resources` and `Events` tabs to identify what resource failed to delete. Manually delete the resource(s). 
+
+    c. **Click** **Delete** to manually delete the CloudFormation stack once resources are cleaned up.

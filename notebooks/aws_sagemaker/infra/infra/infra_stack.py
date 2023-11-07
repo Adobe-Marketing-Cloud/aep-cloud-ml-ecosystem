@@ -126,6 +126,27 @@ class InfraStack(Stack):
             user_profile_name='sm-aep-domain-user'
         )
 
+        jupyter_app = sagemaker.CfnApp(self, 'jupyter-app',
+            app_name='default',
+            app_type='JupyterServer',
+            domain_id=studio_domain.attr_domain_id,
+            user_profile_name=studio_domain_user_profile.user_profile_name
+        )
+
+        kernel_app = sagemaker.CfnApp(self, "kernel-app",
+            app_name='kernel',
+            app_type='KernelGateway',
+            domain_id=studio_domain.attr_domain_id,
+            user_profile_name=studio_domain_user_profile.user_profile_name,
+            resource_spec=sagemaker.CfnApp.ResourceSpecProperty(
+                instance_type='ml.m5.large',
+                sage_maker_image_arn='arn:aws:sagemaker:us-west-2:236514542706:image/sagemaker-data-science-310-v1'
+            )
+        )
+
+        jupyter_app.add_dependency(studio_domain_user_profile)
+        kernel_app.add_dependency(studio_domain_user_profile)
+
         CfnOutput(self, "Stack ID", value=self.stack_id)
         CfnOutput(self, "VPC ID", value=vpc.vpc_id)
         CfnOutput(self, "Studio Domain ID", value=studio_domain.attr_domain_id)
@@ -135,5 +156,6 @@ class InfraStack(Stack):
         CfnOutput(self, "Data Flow IAM User", value=data_flow_user.user_name)
         CfnOutput(self, "Data Flow User Access Key", value=access_key.access_key_id)
         CfnOutput(self, "Data Flow User Secret Key", value=secret_key.secret_name)
+        CfnOutput(self, "EFS ID", value=studio_domain.attr_home_efs_file_system_id)
             
 
