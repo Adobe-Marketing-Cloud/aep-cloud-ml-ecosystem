@@ -171,21 +171,23 @@ git clone git@github.com:Adobe-Marketing-Cloud/aep-cloud-ml-ecosystem.git
 
 ![Uploading a file to Studio](images/05_alt_upload.png)
 
-4. Refer to the CDK deployment outputs noted earlier, and set the AWS values in the config.ini file which will be used by the notebooks throughout the demo.
+4. The Adobe CMLE notebooks load settings from a config file - `conf/config.ini`. Use values from Adobe AEP project and authentication setup (see Adobe CMLE main README) to complete Platform and Authentication sections of the config. Refer to CDK deployment outputs noted earlier to complete the AWS section of the config.
 
     a. Using the File Browser (![Studio UI file browser icon](images/file_browser_icon.png)), **navigate** to `aep-cloud-ml-ecosystem-main/conf`
 
-    b. **Double-click** on `config.ini` to open it in the editor
+    b. **Double-click** on `config.ini` to open it in the text editor.
 
-    c. **Copy** the **S3DataBucket** value from CDK outputs, and **paste** in the **[AWS]** section **→** **s3_bucket_name** property. 
+    c. **Set** values for **[Platform]** (`ims_org_id` and `sandbox_name`) and **[Authentication]** (`client_id`, `client_secret`, and `tech_acct_id`) noted from AEP project and API authentication setup.
 
-    d. **Set** a S3 prefix for the **s3_prefix** property. (Note: this is a not a value from CDK outputs, so it could simply be "test" if you do not have a specific prefix in mind) 
+    d. **Copy** the **S3DataBucket** value from CDK outputs, and **paste** in the **[AWS]** section `s3_bucket_name` property. 
+
+    e. **Set** a S3 prefix for the `s3_prefix` property. (Note: this is a not a value from CDK outputs, so it could simply be "test" if you do not have a specific prefix in mind) 
 
     *Note: a S3 prefix is a string of characters at the beginning of the object key name. It’s a way to organize data in a bucket. See AWS documentation for more info - See [Organizing objects using prefixes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-prefixes.html)*
 
-    e. **Copy** the **Stack ARN** value from CDK outputs, and **paste** in the **[AWS]** section **→ cfn_stack_id** property. **Save** the file.
+    f. **Copy** the **Stack ARN** value from CDK outputs, and **paste** in the **[AWS]** section `cfn_stack_id` property.
 
-    f. After the changes, the bottom of your config.ini should look similar to this (Note: the user chose to use “cmle-test” as the prefix in this case) 
+    g. **Save** the file. After the changes, the AWS section of your config.ini should look similar to this (Note: the user chose to use “cmle-test” as the prefix in this case) 
 
 ![Notebook config.ini file with AWS properties configured](images/00_2_config_ini.png)
 
@@ -197,7 +199,7 @@ git clone git@github.com:Adobe-Marketing-Cloud/aep-cloud-ml-ecosystem.git
 
     c. **Run** command: `python3 validate.py`
 
-6. If the validation script returns **SUCCESS**, get started with the Week1 notebook.
+6. If the validation script returns **SUCCESS**, get started with Notebook-1.
 
     a. Using the file explorer, **navigate** to `aep-cloud-ml-ecosystem-main/notebooks/aws_sagemaker`
 
