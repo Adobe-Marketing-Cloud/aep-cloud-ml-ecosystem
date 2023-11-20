@@ -195,3 +195,10 @@ Not yet supported.
 5 custom notebooks have been built that show Sagemaker support. 
 Once you have completed the steps above including Configuration File, Org-level Information and Authentication Information. 
 Please find the customized notebooks in notebooks/aws_sagemaker and follow the SageMaker specific [README](notebooks/aws_sagemaker/README.md)
+
+### 5. DataRobot setup
+
+The DataRobot implementation allows you to leverage the DataRobot Development and MLOps capabilities to train models, deplopy them and write predictions into the AEP environment.
+A demo of the workflow can be found here: https://www.dropbox.com/scl/fi/apdzy8eoizrhm64n006hz/DR-DEMO.mp4?rlkey=bqf5vtx9n3m1cv6hebnwxe1uk&dl=0
+To config add the DataRobot token and API-endpoint fields under the DataRobot section. If you have not created one, please refer to the following guide: https://docs.datarobot.com/en/docs/api/api-quickstart/index.html#create-a-datarobot-api-key
+For any questions, please reach out to support@datarobot.com
