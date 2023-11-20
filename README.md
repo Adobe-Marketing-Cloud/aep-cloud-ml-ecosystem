@@ -56,7 +56,8 @@ You may already have this information, in which case you can skip to the next se
 ![UI Data Debugger](img/ui-data-debugger.png)
 
 For the sandbox name, you can get it one of 2 ways:
-- If you do not have admin access to your Adobe Experience Platform instance, a human-readable version of it can be found in the top-right corner. Be aware though it should be all lowercase and not contain any spaces so if you are unsure you can ask your instance admin to verify.
+- If you do not have admin access to your Adobe Experience Platform instance, you can find it in the url within the section starts with sname.In the example below, the sandbox name is `cmle`. Be aware though it should be all lowercase and not contain any spaces so if you are unsure you can ask your instance admin to verify.
+![URL_Sandbox_Name](img/url-sandbox-name.png)
 - If you have admin access, you can navigate to the `Sandboxes` panel to the left, click on `Browse` and note the **name** value of the instance you want to use.
 
 ![UI Sandboxes](img/ui-sandboxes.png)
@@ -112,6 +113,10 @@ Make sure to note down the public key displayed on this screen as well, then cli
 
 ![Console API Profile Screen](img/console-api-profile.png)
 
+Make sure your api credential is assigned with Role(s) that contains all necessary permissions from Adobe Experience Platform UI under the tab Administration -> Permissions -> Roles -> API credentials. Please provide your credential info with your org administrator if you can't see the tab yourself.
+![API Credential With Role](img/ui-api-credentials.png)
+
+
 Now your setup is complete, and you will be taken to the summary page for your API connection. You can verify that everything looks correct and scroll down to see a few fields:
 
 ![Console API Summary 1](img/console-api-summary-1.png)
@@ -138,6 +143,7 @@ $ export ADOBE_HOME=`pwd`
 For simplicity you can set it in your `.bashrc` or `.zshrc` (or the corresponding profile file if you use a different shell) to ensure it gets loaded automatically.
 
 After setting up the configuration file described above, you can start your Jupyter notebook server **at the root of this repository**.
+Please select python kernel 3.0 or above
 It is important to start it at the root because the notebooks look for images on parent folders, so images will not render properly if you start the server too deep.
 
 ### 2. Databricks setup
@@ -186,7 +192,9 @@ Not yet supported.
 
 ### 4. SageMaker setup
 
-A custom notebook has been built that shows Sagemaker support.  The central idea behind this support is to showcase how data gets brought in from the dlz into the sagemaker studio environment.
+5 custom notebooks have been built that show Sagemaker support. 
+Once you have completed the steps above including Configuration File, Org-level Information and Authentication Information. 
+Please find the customized notebooks in notebooks/aws_sagemaker and follow the SageMaker specific [README](notebooks/aws_sagemaker/README.md)
 
 #### 4.1 Sagemaker studio environment requirements
 - A custom jars subdirectory with the image below delineating the jars needed to be installed
@@ -197,12 +205,6 @@ A custom notebook has been built that shows Sagemaker support.  The central idea
 ### 5. DataRobot setup
 
 The DataRobot implementation allows you to leverage the DataRobot Development and MLOps capabilities to train models, deplopy them and write predictions into the AEP environment.
-
 A demo of the workflow can be found here: https://www.dropbox.com/scl/fi/apdzy8eoizrhm64n006hz/DR-DEMO.mp4?rlkey=bqf5vtx9n3m1cv6hebnwxe1uk&dl=0
-
 To config add the DataRobot token and API-endpoint fields under the DataRobot section. If you have not created one, please refer to the following guide: https://docs.datarobot.com/en/docs/api/api-quickstart/index.html#create-a-datarobot-api-key
-
 For any questions, please reach out to support@datarobot.com
-
-
-
