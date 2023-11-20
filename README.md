@@ -196,12 +196,6 @@ Not yet supported.
 Once you have completed the steps above including Configuration File, Org-level Information and Authentication Information. 
 Please find the customized notebooks in notebooks/aws_sagemaker and follow the SageMaker specific [README](notebooks/aws_sagemaker/README.md)
 
-#### 4.1 Sagemaker studio environment requirements
-- A custom jars subdirectory with the image below delineating the jars needed to be installed
-![jarsNeeded.png](img/jars-needed.png)
-- A conf directory with a config.ini with the appropriate parameters for all of the authentication and the featurized dataset id
-- The file private.key needs to be uploaded to the root directory of the sagemaker studio environment
-
 ### 5. DataRobot setup
 
 The DataRobot implementation allows you to leverage the DataRobot Development and MLOps capabilities to train models, deplopy them and write predictions into the AEP environment.
