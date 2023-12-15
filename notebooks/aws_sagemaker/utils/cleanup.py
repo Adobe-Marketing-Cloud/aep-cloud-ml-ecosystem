@@ -17,8 +17,10 @@
 import boto3
 import os
 import logging
+import argparse
 from rich.logging import RichHandler
 from rich.traceback import install
+from rich_argparse import RichHelpFormatter
 from botocore.exceptions import ValidationError, ClientError
 from botocore.config import Config
 from configparser import ConfigParser
@@ -42,18 +44,30 @@ sagemaker = boto3.client('sagemaker', config=client_config)
 efs = boto3.client('efs', config=client_config)
 ec2 = boto3.client('ec2', config=client_config)
 
+parser = argparse.ArgumentParser(
+  prog='cleanup',
+  description='Clean-up script for Adobe CMLE AWS notebook testing',
+  formatter_class=RichHelpFormatter
+)
+parser.add_argument('stack_id', action='store', nargs='?', default='none', help='(optional) cloudformation stack ID; if not provided as an argument, this script will also look for a stack ID defined in your conf/config.ini file. Stack ID must be provided using one of these options.')
+args = parser.parse_args()
+
 # Get stack id from config.ini
 try:
-    log.info(f'Parsing config file')
-    config = ConfigParser()
-    config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "conf", "config.ini")
-    config.read(config_path)
-    log.info(f'CONFIG FILE SECTIONS: {config.sections()}')
-    stack_id=config.get('AWS', 'cfn_stack_id')
-    log.info(f'STACK ID: {stack_id}')
+    log.info('Looking for CloudFormation stack ID')
+    stack_id = args.stack_id
+    if stack_id == 'none':
+        log.info('Stack ID not provided as argument')
+        log.info('Trying config file')
+        config = ConfigParser()
+        config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'conf', 'config.ini')
+        config.read(config_path)
+        log.info(f'CONFIG FILE SECTIONS: {config.sections()}')
+        stack_id = config.get('AWS', 'cfn_stack_id')
+    log.info(f'STACK ID found: {stack_id}')
 except Exception as e:
     log.error(e)
-    raise ValueError('Could not find config.ini file or required values in the file.')
+    raise ValueError('Could not find a valid stack ID either as a script argument or defined in your config.ini file.')
 
 # Get SageMaker domain user
 try:
