@@ -35,8 +35,7 @@ scoring_dataset_id | Platform | The ID of the dataset containing the scoring out
 environment | Platform | The type of environment this organization is running under | **prod** if running in production, **stage** otherwise | Weeks 1 through 5
 client_id | Authentication | The client ID used for API calls                           | See section below on **Authentication Information** | Weeks 1 through 5
 client_secret | Authentication | The client secret used for API calls                       | See section below on **Authentication Information** | Weeks 1 through 5
-private_key_path | Authentication | The path to the private key for your JWT token             | See section below on **Authentication Information** | Weeks 1 through 5
-tech_acct_id | Authentication | The technical account ID used for API calls | See section below on **Authentication Information** | Weeks 1 through 5
+scopes | Authentication | The scopes used for API calls             | See section below on **Authentication Information** | Weeks 1 through 5
 export_path | Cloud | The path in your Cloud Storage account where featurized data will be exported | Default to `cmle/egress` | Weeks 2, 3 & 4
 import_path | Cloud | The path in your Cloud Storage account where scoring results will be written | Default to `cmle/ingress` | Weeks 4 & 5
 data_format | Cloud | The format of the files for the featurized data | Default to `parquet` | Weeks 2, 3 & 4
@@ -64,13 +63,13 @@ For the sandbox name, you can get it one of 2 ways:
 
 ### Authentication Information
 
-Authentication with the Adobe Experience Platform can be performed using JSON Web Tokens (JWT) and will allow you to interact with most Adobe Experience Platform APIs and handle automated processes such as:
+Authentication with the Adobe Experience Platform can be performed using [OAuth](https://developer.adobe.com/developer-console/docs/guides/authentication/ServerToServerAuthentication/implementation/) and will allow you to interact with most Adobe Experience Platform APIs and handle automated processes such as:
 - Creating schemas and/or datasets
 - Ingesting data
 - Querying data
 - ...
 
-The process to setup a JWT connection is described below, and you will need to capture a few fields that will be used throughout the notebooks and configurations in this repository.
+The process to setup a OAuth connection is described below, and you will need to capture a few fields that will be used throughout the notebooks and configurations in this repository.
 
 The first step is to go to the [Adobe Developer Console](https://console.adobe.io/) which comes with any Adobe Experience Platform organization. Make sure you are logged into the organization you would like to use. You should be presented with a screen like below:
 
@@ -88,28 +87,11 @@ In this new API page, you will be shown the different types of APIs that are ava
 
 ![Console API Screen](img/console-api.png)
 
-This next page allows you to configure access to your API. There's a couple options related to your choice of [SSH key pair](https://www.ssh.com/academy/ssh/public-key-authentication):
-- If you do not have a key pair yet or would like to use a brand new one, you can select the first option to generate one on the fly.
-- If you already have a key pair generated, you are able to upload it here and reuse it by selecting the second option.
-
+This next page allows you to configure access to your API. We will use the OAuth Server-to-Server:
 ![Console API Configuration Screen](img/console-api-config.png)
 
-For the purposes of this setup we recommend creating a new keypair with the first option. Clicking on `Next` will prompt you to download a `zip` file containing your public and private key, so make sure to accept and store it securely on your file system.
-
-![Console API Keypair Download Screen](img/console-api-keypair.png)
-
-For example here we called our `zip` file `demo-config.zip`. Once download is complete, go into your terminal and extract the private key and certificate into a directory by using the following command:
-
-```
-$ unzip demo-config.zip -d demo-config
-Archive:  demo-config.zip
- extracting: demo-config/certificate_pub.crt
- extracting: demo-config/private.key
-```
-
-This file `private.key` is what you will need later on so make sure to remember where it is located.
-
-Make sure to note down the public key displayed on this screen as well, then click `Next`. This next page will ask you to select a product profile. It will depend what profiles are configured on your org - they are used to scope access to only what is necessary. You can work with your organization administrator to find out the right profile, and then select it as shown in the screen below.
+Then click `Next`. This next page will ask you to select a product profile. It will depend what profiles are configured on your org - they are used to scope access to only what is necessary. You can work with your organization administrator to find out the right profile, and then select it as shown in the screen
+below.
 
 ![Console API Profile Screen](img/console-api-profile.png)
 
@@ -125,7 +107,7 @@ Now your setup is complete, and you will be taken to the summary page for your A
 The main fields you'll want to note down for further reference in this repository are:
 - **Client ID**: This is used to identify yourself when you use programmatic API access.
 - **Client secret**: Click on `Retrieve client secret` to see the value and **do not share it with anyone**
-- **Technical account ID**
+
 
 In addition to those, you'll want to save your private key.
 Make sure to save it in a secure location on your disk as it will need to be pointed to in your configuration file.
@@ -150,18 +132,12 @@ It is important to start it at the root because the notebooks look for images on
 
 Here are the pre-requisites to run these notebooks on Databricks:
 - Databricks Runtime Version should be of type **ML** and not Standard.
-- Databricks Runtime Version should be above `12.1 ML`
+- Databricks Runtime Version should be above `12.1 ML`(the notebooks were tested on `12.1ML`)
 - Your compute environment can be any number of nodes on any instance type.
 - You will need to create a personal user token
 - You will need to define $DBUSER to be your user on the databricks cluster
 - To begin please setup a personal access token on your databricks cluster by following these instructions [Access_Token Setup](https://docs.databricks.com/dev-tools/auth.html)
 The next few steps assume you have already installed and setup the [Databricks CLI](https://docs.databricks.com/dev-tools/cli/index.html) to point to your Databricks workspace.
-- Copy the private key file you obtained following the configuration file setup to your Databrick workspace filesystem using:
-
-```
-$ databricks fs cp /path/to/private.key dbfs:/FileStore/shared_uploads/$DBUSER/cmle/keypairs/private.key
-```
-- Update the [configuration file](./conf/config.ini) to point the field `private_key_path` to the destination path, for example `private_key_path=/dbfs/FileStore/shared_uploads/$DBUSER/cmle/keypairs/private.key`
 - Copy the updated configuration file to your Databricks workspace filesystem using:
 
 ```
