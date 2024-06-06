@@ -178,3 +178,8 @@ The DataRobot implementation allows you to leverage the DataRobot Development an
 A demo of the workflow can be found here: https://www.dropbox.com/scl/fi/apdzy8eoizrhm64n006hz/DR-DEMO.mp4?rlkey=bqf5vtx9n3m1cv6hebnwxe1uk&dl=0
 To config add the DataRobot token and API-endpoint fields under the DataRobot section. If you have not created one, please refer to the following guide: https://docs.datarobot.com/en/docs/api/api-quickstart/index.html#create-a-datarobot-api-key
 For any questions, please reach out to support@datarobot.com
+
+### 6. WatsonX setup
+
+3 custom notebooks have been introduced that show WatsonX support.
+Once you've finished first 2 notebooks find the remaining ones in notebooks/watsonx and follow WatsonX specific [README](notebooks/watsonx/README.md)
