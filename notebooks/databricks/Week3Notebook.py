@@ -48,34 +48,104 @@
 
 # COMMAND ----------
 
-from adlfs import AzureBlobFileSystem
+import fsspec
 from fsspec import AbstractFileSystem
 
-abfs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
-export_time = get_export_time(abfs, dlz_container, export_path, featurized_dataset_id)
+def getDLZFSPath(credentials: dict):
+    if 'dlzProvider' in credentials.keys() and 'Amazon S3' in credentials['dlzProvider']:
+        aws_credentials = {
+            'key' : credentials['credentials']['awsAccessKeyId'],
+            'secret' : credentials['credentials']['awsSecretAccessKey'],
+            'token' : credentials['credentials']['awsSessionToken']
+        }
+        return fsspec.filesystem('s3', **aws_credentials), credentials['dlzPath']['bucketName']
+    else:
+        abs_credentials = {
+            'account_name' : credentials['storageAccountName'],
+            'sas_token' : credentials['SASToken']
+        }
+        return fsspec.filesystem('abfss', **abs_credentials), credentials['containerName']
+
+
+def get_export_time(fs: AbstractFileSystem, container_name: str, base_path: str, dataset_id: str):
+  featurized_data_base_path = f"{container_name}/{base_path}/{dataset_id}"
+  featurized_data_export_paths = fs.ls(featurized_data_base_path)
+  
+  if len(featurized_data_export_paths) == 0:
+    raise Exception(f"Found no exports for featurized data from dataset ID {dataset_id} under path {featurized_data_base_path}")
+  elif len(featurized_data_export_paths) > 1:
+    print(f"Found {len(featurized_data_export_paths)} exports from dataset dataset ID {dataset_id} under path {featurized_data_base_path}, using most recent one")
+  
+  featurized_data_export_path = featurized_data_export_paths[-1]
+  featurized_data_export_time = featurized_data_export_path.strip().split("/")[-1].split("=")[-1]
+  return featurized_data_export_time
+
+
+fs, container = getDLZFSPath(res)
+
+
+export_time = get_export_time(fs, container, export_path, featurized_dataset_id)
 print(f"Using featurized data export time of {export_time}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC At this point we're ready to read this data. We're using Spark since it could be pretty large as we're not doing any sampling. Spark needs the following properties to be able to authenticate using SAS:
+# MAGIC At that point we're ready to read this data. We're using Spark since it could be pretty large as we're not doing any sampling. 
+# MAGIC ```
+# MAGIC Based on the provisioned account Landing Zone could be either configured to use azure or aws, 
+# MAGIC in case of azure following properties will be used to authenticate using SAS:
 # MAGIC - `fs.azure.account.auth.type.$ACCOUNT.dfs.core.windows.net` should be set to `SAS`.
 # MAGIC - `fs.azure.sas.token.provider.type.$ACCOUNT.dfs.core.windows.net` should be set to `org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider`.
 # MAGIC - `fs.azure.sas.fixed.token.$ACCOUNT.dfs.core.windows.net` should be set to the SAS token retrieved earlier.
-# MAGIC
-# MAGIC Let's put that in practice and create a Spark dataframe containing the entire featurized data:
-
+# MAGIC 
+# MAGIC in case of aws following properties will be used to access data stored in s3:
+# MAGIC - `fs.s3a.access.key` and `spark.hadoop.fs.s3a.access.key` should be the s3 access key
+# MAGIC - `fs.s3a.secret.key` and `spark.hadoop.fs.s3a.secret.key` should be the s3 secret
+# MAGIC - `fs.s3a.session.token` and `spark.hadoop.fs.s3a.session.token` should be set to s3 session token
+# MAGIC - `fs.s3a.aws.credentials.provider` and `spark.hadoop.fs.s3a.aws.credentials.provider` should be set to `org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider`
+# MAGIC - `fs.s3.impl` and `spark.hadoop.fs.s3.impl` should be set to `org.apache.hadoop.fs.s3a.S3AFileSystem`
+# MAGIC 
+# MAGIC 
+# MAGIC The above properties are calculated based on the landing zone credentials, following util method will set these up:
+# MAGIC ```
 # COMMAND ----------
 
-spark.conf.set(f"fs.azure.account.auth.type.{dlz_storage_account}.dfs.core.windows.net", "SAS")
-spark.conf.set(f"fs.azure.sas.token.provider.type.{dlz_storage_account}.dfs.core.windows.net", "org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider")
-spark.conf.set(f"fs.azure.sas.fixed.token.{dlz_storage_account}.dfs.core.windows.net", dlz_sas_token)
+def configureSparkSessionAndGetPath(credentials):
+    if 'dlzProvider' in credentials.keys() and 'Amazon S3' in credentials['dlzProvider']:
+        aws_key = credentials['credentials']['awsAccessKeyId']
+        aws_secret = credentials['credentials']['awsSecretAccessKey']
+        aws_token = credentials['credentials']['awsSessionToken']
+        aws_buket = credentials['dlzPath']['bucketName']
+        dlz_folder = credentials['dlzPath']['dlzFolder']
+        spark.conf.set("fs.s3a.access.key", aws_key)
+        spark.conf.set("fs.s3a.secret.key", aws_secret)
+        spark.conf.set("fs.s3a.session.token", aws_token)
+        spark.conf.set("fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider")
+        spark.conf.set("fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        spark.conf.set("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        spark.conf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider")
+        spark.conf.set("spark.hadoop.fs.s3a.access.key", aws_key)
+        spark.conf.set("spark.hadoop.fs.s3a.secret.key", aws_secret)
+        spark.conf.set("fs.s3a.session.token", aws_token)
+        return f"s3a://${aws_buket}/{dlz_folder}/"
+    else:
+        dlz_storage_account = credentials['storageAccountName']
+        dlz_sas_token = credentials['SASToken']
+        dlz_container = credentials['containerName']
+        spark.conf.set(f"fs.azure.account.auth.type.{dlz_storage_account}.dfs.core.windows.net", "SAS")
+        spark.conf.set(f"fs.azure.sas.token.provider.type.{dlz_storage_account}.dfs.core.windows.net", "org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider")
+        spark.conf.set(f"fs.azure.sas.fixed.token.{dlz_storage_account}.dfs.core.windows.net", dlz_sas_token)
+        return f"abfss://{dlz_container}@{dlz_storage_account}.dfs.core.windows.net/"
 
-protocol = "abfss"
-input_path = f"{protocol}://{dlz_container}@{dlz_storage_account}.dfs.core.windows.net/{export_path}/{featurized_dataset_id}/exportTime={export_time}/"
+# init spark session for provisioned DLZ and get the base path (fs3://bucket_name/folder or abfss://container@account/)
+cloud_base_path = configureSparkSessionAndGetPath(credentials)
 
-dlz_input_df = spark.read.parquet(input_path).na.fill(0)
+input_path = cloud_base_path + f"{export_path}/{featurized_dataset_id}/exportTime={export_time}/"
+
+#Let's put that in practice and create a Spark dataframe containing the entire featurized data:
+dlz_input_df = spark.read.parquet(input_path)
 dlz_input_df.printSchema()
+
 
 # COMMAND ----------
 

@@ -84,7 +84,9 @@ job_cluster_config = {
 
 pypi_packages = [
     "PyGreSQL==5.2.5",
-    "adlfs==2023.8.0",
+    "adlfs==2023.9.0",
+    "fsspec==2023.9.0",
+    "s3fs==2023.9.0",
     "aepp==0.3.1.post5",
     "mmh3==4.0.1",
     "rstr==3.2.1",

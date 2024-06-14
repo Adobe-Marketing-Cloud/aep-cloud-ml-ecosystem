@@ -49,8 +49,7 @@ sandbox_name = config.get("Platform", "sandbox_name")
 environment = config.get("Platform", "environment")
 client_id = config.get("Authentication", "client_id")
 client_secret = config.get("Authentication", "client_secret")
-private_key_path = config.get("Authentication", "private_key_path")
-tech_account_id = config.get("Authentication", "tech_acct_id")
+scopes = config.get("Authentication", "scopes")
 dataset_id = config.get("Platform", "dataset_id")
 featurized_dataset_id = config.get("Platform", "featurized_dataset_id")
 scoring_dataset_id = config.get("Platform", "scoring_dataset_id")
@@ -59,9 +58,6 @@ import_path = config.get("Cloud", "import_path")
 data_format = config.get("Cloud", "data_format")
 compression_type = config.get("Cloud", "compression_type")
 model_name = config.get("Cloud", "model_name")
-
-if not os.path.exists(private_key_path):
-    raise Exception(f"Looking for private key file under {private_key_path} but key not found, please verify path")
 
 
 # COMMAND ----------
@@ -82,9 +78,8 @@ import aepp
 
 aepp.configure(
     org_id=ims_org_id,
-    tech_id=tech_account_id,
+    scopes=scopes,
     secret=client_secret,
-    path_to_key=private_key_path,
     client_id=client_id,
     environment=environment,
     sandbox=sandbox_name,
@@ -201,7 +196,6 @@ def get_dataset_ids_by_name(cat_conn, name):
 
 # COMMAND ----------
 
-from adlfs import AzureBlobFileSystem
 from fsspec import AbstractFileSystem
 
 def get_export_time(fs: AbstractFileSystem, container_name: str, base_path: str, dataset_id: str):
@@ -219,6 +213,9 @@ def get_export_time(fs: AbstractFileSystem, container_name: str, base_path: str,
 
 
 # COMMAND ----------
+from aepp import flowservice
+
+flow_conn = flowservice.FlowService()
 
 connector = aepp.connector.AdobeRequest(
     config_object=aepp.config.config_object,
@@ -230,11 +227,7 @@ dlz_endpoint = (
     aepp.config.endpoints["global"]
     + "/data/foundation/connectors/landingzone/credentials")
 
-dlz_credentials = connector.getData(endpoint=dlz_endpoint, params={"type": "dlz_destination"})
-dlz_container = dlz_credentials["containerName"]
-dlz_sas_token = dlz_credentials["SASToken"]
-dlz_storage_account = dlz_credentials["storageAccountName"]
-dlz_sas_uri = dlz_credentials["SASUri"]
+dlz_credentials = flow_conn.getLandingZoneCredential())
 
 # COMMAND ----------
 
