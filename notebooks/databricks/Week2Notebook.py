@@ -1349,46 +1349,79 @@ while not finished:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Now that a run of our Data Flow has executed successfully, we're all set! We can do a sanity check to verify that the data indeed made its way into the DLZ. For that, we recommend setting up [Azure Storage Explorer](https://azure.microsoft.com/en-us/products/storage/storage-explorer) to connect to your DLZ container using [this guide](https://experienceleague.adobe.com/docs/experience-platform/destinations/catalog/cloud-storage/data-landing-zone.html?lang=en). To get the credentials, you can execute the code below to get the SAS URL needed:
+# MAGIC Now that a run of our Data Flow has executed successfully, we're all set! We can do a sanity check to verify that the data indeed made its way into the DLZ. Based on whether DLZ was provisioned on AWS os Azure we will use a generic approach for listing directory structures.
 
 # COMMAND ----------
+import aepp
+import fsspec
+from aepp import flowservice
 
-# TODO: use functionality in aepp once released
-from aepp import connector
+def getDLZFSPath(credentials: dict):
+    if 'dlzProvider' in credentials.keys() and 'Amazon S3' in credentials['dlzProvider']:
+        aws_credentials = {
+            'key' : credentials['credentials']['awsAccessKeyId'],
+            'secret' : credentials['credentials']['awsSecretAccessKey'],
+            'token' : credentials['credentials']['awsSessionToken']
+        }
+        return fsspec.filesystem('s3', **aws_credentials), credentials['dlzPath']['bucketName']
+    else:
+        abs_credentials = {
+            'account_name' : credentials['storageAccountName'],
+            'sas_token' : credentials['SASToken']
+        }
+        return fsspec.filesystem('abfss', **abs_credentials), credentials['containerName']
 
-connector = connector.AdobeRequest(
-    config_object=aepp.config.config_object,
-    header=aepp.config.header,
-    loggingEnabled=False,
-    logger=None,
-)
+def listDLZ(fs, container, prefix):
+    entries = fs.ls(container, detail=True)
+    entries_sorted = sorted(entries, key=lambda x: x['type'], reverse=True)  # Directories first
+    for i, entry in enumerate(entries_sorted):
+        entry_name = entry['name'].split('/')[-1]
+        if entry['type'] == 'directory':
+            entry_name += '/'
+        connector = '|-- ' if i < len(entries_sorted) - 1 else '└- '
+        print(f"{prefix}{connector}{entry_name}")
+        if entry['type'] == 'directory':
+            new_prefix = prefix + ('|   ' if i < len(entries_sorted) - 1 else '    ')
+            listDLZ(fs, entry['name'], new_prefix)
 
-endpoint = aepp.config.endpoints["global"] + "/data/foundation/connectors/landingzone/credentials"
 
-dlz_credentials = connector.getData(endpoint=endpoint, params={
-    "type": "dlz_destination"
-})
-dlz_container = dlz_credentials["containerName"]
-dlz_sas_token = dlz_credentials["SASToken"]
-dlz_storage_account = dlz_credentials["storageAccountName"]
-dlz_sas_uri = dlz_credentials["SASUri"]
-print(f"DLZ container: {dlz_container}")
-print(f"DLZ storage account: {dlz_storage_account}")
-print(f"DLZ SAS URL: {dlz_sas_uri}")
+flow_conn = flowservice.FlowService()
+credentials = flow_conn.getLandingZoneCredential(dlz_type='dlz_destination')
 
+fs, container = getDLZFSPath(credentials)
+listDLZ(fs, container, '')                  
+                  
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Once setup you should be able to see your featurized data as a set of Parquet files under the following directory structure: `cmle/egress/$DATASETID/exportTime=$TIMESTAMP` - see screenshot below.
+# MAGIC Once setup you should be able to see your featurized data as a set of Parquet files under the following directory structure: `cmle/egress/$DATASETID/exportTime=$TIMESTAMP` - in a tree like structure:
+# MAGIC ```
+# MAGIC |-- _$azuretmpfolder$/
+# MAGIC └- cmle/
+# MAGIC     └- egress/
+# MAGIC        └- 66018d8312377d2c68545bac/
+# MAGIC            └- exportTime=20240405230601/
+# MAGIC                |-- part-00000-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102384-1-c000.gz.parquet
+# MAGIC                |-- part-00001-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102385-1-c000.gz.parquet
+# MAGIC                |-- part-00002-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102386-1-c000.gz.parquet
+# MAGIC                |-- part-00003-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102387-1-c000.gz.parquet
+# MAGIC                |-- part-00004-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102388-1-c000.gz.parquet
+# MAGIC                |-- part-00005-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102389-1-c000.gz.parquet
+# MAGIC                |-- part-00006-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102390-1-c000.gz.parquet
+# MAGIC                |-- part-00007-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102391-1-c000.gz.parquet
+# MAGIC                |-- part-00008-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102392-1-c000.gz.parquet
+# MAGIC                |-- part-00009-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102393-1-c000.gz.parquet
+# MAGIC                |-- part-00010-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102394-1-c000.gz.parquet
+# MAGIC                |-- part-00011-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102395-1-c000.gz.parquet
+# MAGIC                |-- part-00012-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102396-1-c000.gz.parquet
+# MAGIC                |-- part-00013-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102397-1-c000.gz.parquet
+# MAGIC                |-- part-00014-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102398-1-c000.gz.parquet
+# MAGIC                └- part-00015-tid-6351713407229798623-174d2b9b-87e8-4c29-8a76-ec05b444f26a-102399-1-c000.gz.parquet
+# MAGIC ```
 
 # COMMAND ----------
 
 print(f"Featurized data in DLZ should be available under {export_path}/{created_dataset_id}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ![DLZ](/files/static/7cf4bf44-5482-4426-a3b3-842be2f737b1/media/CMLE-Notebooks-Week2-ExportedDataset.png)
 
 # COMMAND ----------
 

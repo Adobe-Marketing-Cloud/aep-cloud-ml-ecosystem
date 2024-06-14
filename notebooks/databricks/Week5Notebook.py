@@ -38,48 +38,84 @@
 # MAGIC %md
 # MAGIC ## 1.1 Reading the scored data
 # MAGIC
-# MAGIC To that end we need to read the output of the scoring data that we wrote to the Data Landing Zone previously. We use the regular container `dlz-user-container`, since this is where we wrote the data.
 
 # COMMAND ----------
-
-from aepp import flowservice
-
-flow_conn = flowservice.FlowService()
-
-# Note that this overrides the general DLZ destination container defined in CommonInclude.
-dlz_credentials = flow_conn.getLandingZoneCredential()
-dlz_container = dlz_credentials["containerName"]
-dlz_sas_token = dlz_credentials["SASToken"]
-dlz_storage_account = dlz_credentials["storageAccountName"]
-dlz_sas_uri = dlz_credentials["SASUri"]
-print(f"Reading from container {dlz_container}")
-
-# COMMAND ----------
-
 # MAGIC %md
-# MAGIC At that point we're ready to read the data. We're using Spark since it could be pretty large as we're not doing any sampling. Spark needs the following properties to be able to authenticate using SAS:
+# MAGIC At that point we're ready to read this data. We're using Spark since it could be pretty large as we're not doing any sampling. Based on the provisioned account Landing Zone could be either configured to use azure or aws, in case of azure following properties will be used to authenticate using SAS:
+# MAGIC ```
 # MAGIC - `fs.azure.account.auth.type.$ACCOUNT.dfs.core.windows.net` should be set to `SAS`.
 # MAGIC - `fs.azure.sas.token.provider.type.$ACCOUNT.dfs.core.windows.net` should be set to `org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider`.
-# MAGIC - `fs.azure.sas.fixed.token.$ACCOUNT.dfs.core.windows.net` should be set to the SAS token retrieved earlier.
-# MAGIC
+# MAGIC - `fs.azure.sas.fixed.token.$ACCOUNT.dfs.core.windows.net` should be set to the `SAS token` retrieved earlier.
+# MAGIC 
+# MAGIC in case of aws following properties will be used to access data stored in s3:
+# MAGIC 
+# MAGIC - `fs.s3a.access.key` and `spark.hadoop.fs.s3a.access.key` should be the `s3 access key`
+# MAGIC - `fs.s3a.secret.key` and spark.hadoop.fs.s3a.secret.key should be the `s3 secret`
+# MAGIC - `fs.s3a.session.token` and spark.hadoop.fs.s3a.session.token should be set to `s3 session token`
+# MAGIC - `fs.s3a.aws.credentials.provider` and `spark.hadoop.fs.s3a.aws.credentials.provider` should be set to `org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider`
+# MAGIC - `fs.s3.impl` and `spark.hadoop.fs.s3.impl` should be set to `org.apache.hadoop.fs.s3a.S3AFileSystem`
+# MAGIC ```
 # MAGIC Let's put that in practice and create a Spark dataframe containing the entire featurized data:
 
 # COMMAND ----------
 
-from adlfs import AzureBlobFileSystem
+import fsspec
+from aepp import flowservice
 from fsspec import AbstractFileSystem
 
+flow_conn = flowservice.FlowService()
+dlz_credentials = flow_conn.getLandingZoneCredential()
+
+def configureSparkSessionAndGetPath(credentials):
+    if 'dlzProvider' in credentials.keys() and 'Amazon S3' in credentials['dlzProvider']:
+        aws_key = credentials['credentials']['awsAccessKeyId']
+        aws_secret = credentials['credentials']['awsSecretAccessKey']
+        aws_token = credentials['credentials']['awsSessionToken']
+        aws_buket = credentials['dlzPath']['bucketName']
+        dlz_folder = credentials['dlzPath']['dlzFolder']
+        spark.conf.set("fs.s3a.access.key", aws_key)
+        spark.conf.set("fs.s3a.secret.key", aws_secret)
+        spark.conf.set("fs.s3a.session.token", aws_token)
+        spark.conf.set("fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider")
+        spark.conf.set("fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        spark.conf.set("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        spark.conf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider")
+        spark.conf.set("spark.hadoop.fs.s3a.access.key", aws_key)
+        spark.conf.set("spark.hadoop.fs.s3a.secret.key", aws_secret)
+        spark.conf.set("fs.s3a.session.token", aws_token)
+        return f"s3a://${aws_buket}/{dlz_folder}/"
+    else:
+        dlz_storage_account = credentials['storageAccountName']
+        dlz_sas_token = credentials['SASToken']
+        dlz_container = credentials['containerName']
+        spark.conf.set(f"fs.azure.account.auth.type.{dlz_storage_account}.dfs.core.windows.net", "SAS")
+        spark.conf.set(f"fs.azure.sas.token.provider.type.{dlz_storage_account}.dfs.core.windows.net", "org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider")
+        spark.conf.set(f"fs.azure.sas.fixed.token.{dlz_storage_account}.dfs.core.windows.net", dlz_sas_token)
+        return f"abfss://{dlz_container}@{dlz_storage_account}.dfs.core.windows.net/"
+
+def getDLZFSPath(credentials: dict):
+    if 'dlzProvider' in credentials.keys() and 'Amazon S3' in credentials['dlzProvider']:
+        aws_credentials = {
+            'key' : credentials['credentials']['awsAccessKeyId'],
+            'secret' : credentials['credentials']['awsSecretAccessKey'],
+            'token' : credentials['credentials']['awsSessionToken']
+        }
+        return fsspec.filesystem('s3', **aws_credentials), credentials['dlzPath']['bucketName']
+    else:
+        abs_credentials = {
+            'account_name' : credentials['storageAccountName'],
+            'sas_token' : credentials['SASToken']
+        }
+        return fsspec.filesystem('abfss', **abs_credentials), credentials['containerName']
+
+
 def read_remote_scores():
-    azure_blob_fs = AzureBlobFileSystem(account_name=dlz_storage_account, sas_token=dlz_sas_token)
-    export_time = get_export_time(azure_blob_fs, dlz_container, import_path, scoring_dataset_id)
+    fs, dlzfs_path = getDLZFSPath(dlz_credentials)
+    export_time = get_export_time(fs, dlzfs_path, import_path, scoring_dataset_id)
     print(f"Using featurized data export time of {export_time}")
 
-    spark.conf.set(f"fs.azure.account.auth.type.{dlz_storage_account}.dfs.core.windows.net", "SAS")
-    spark.conf.set(f"fs.azure.sas.token.provider.type.{dlz_storage_account}.dfs.core.windows.net", "org.apache.hadoop.fs.azurebfs.sas.FixedSASTokenProvider")
-    spark.conf.set(f"fs.azure.sas.fixed.token.{dlz_storage_account}.dfs.core.windows.net", dlz_sas_token)
-
-    protocol = "abfss"
-    input_path = f"{protocol}://{dlz_container}@{dlz_storage_account}.dfs.core.windows.net/{import_path}/{scoring_dataset_id}/exportTime={export_time}/"
+    dlz_path = configureSparkSessionAndGetPath(dlz_credentials)
+    input_path = f"{dlz_path}{import_path}/{scoring_dataset_id}/exportTime={export_time}/"
 
     remote_scoring_df = (
         spark.read.format("csv")
