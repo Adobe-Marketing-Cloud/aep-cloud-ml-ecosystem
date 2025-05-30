@@ -6,7 +6,7 @@ authors = ["cmle dev team"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.12"
 psycopg2 = "^2.9.5"
 pandas = "^1.5.3"
 numpy = "^1.24.1"
